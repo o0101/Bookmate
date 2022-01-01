@@ -1,6 +1,6 @@
 {
   "name": "bookm",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Complete API for Chrome bookmarks: create, read, update, delete and change notifications.",
   "main": "src/index.js",
   "scripts": {
