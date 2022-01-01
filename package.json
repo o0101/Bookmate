@@ -1,0 +1,33 @@
+{
+  "name": "bookm",
+  "version": "1.0.0",
+  "description": "Complete API for Chrome bookmarks: create, read, update, delete and change notifications.",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "nodemon src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/i5ik/bookm.git"
+  },
+  "keywords": [
+    "bookmarks",
+    "chrome",
+    "API",
+    "library",
+    "observer",
+    "change-notifications",
+    "async-generator",
+    "async-await",
+    "CRUD"
+  ],
+  "author": "@dosy",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/i5ik/bookm/issues"
+  },
+  "homepage": "https://github.com/i5ik/bookm#readme",
+  "dependencies": {
+    "chokidar": "^3.5.2"
+  }
+}
