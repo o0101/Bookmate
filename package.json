@@ -1,17 +1,17 @@
 {
-  "name": "bookm",
+  "name": "bookmate",
   "version": "1.0.1",
-  "description": "Complete API for Chrome bookmarks: create, read, update, delete and change notifications.",
+  "description": "Complete API for Chrome bookmatearks: create, read, update, delete and change notifications.",
   "main": "src/index.js",
   "scripts": {
     "test": "nodemon src/index.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/i5ik/bookm.git"
+    "url": "git+https://github.com/i5ik/bookmate.git"
   },
   "keywords": [
-    "bookmarks",
+    "bookmatearks",
     "chrome",
     "API",
     "library",
@@ -24,9 +24,9 @@
   "author": "@dosy",
   "license": "AGPL-3.0",
   "bugs": {
-    "url": "https://github.com/i5ik/bookm/issues"
+    "url": "https://github.com/i5ik/bookmate/issues"
   },
-  "homepage": "https://github.com/i5ik/bookm#readme",
+  "homepage": "https://github.com/i5ik/bookmate#readme",
   "dependencies": {
     "chokidar": "^3.5.2"
   }

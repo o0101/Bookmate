@@ -36,28 +36,28 @@ const State = {
 
 test();
 async function test() {
-  for await ( const change of bookmarkChanges() ) {
+  for await ( const change of bookmatearkChanges() ) {
     console.log(change);
   }
 }
 
-async function* bookmarkChanges() {
+async function* bookmatearkChanges() {
   const rootDir = getProfileRootDir();
   let change = false;
   let notifyChange = false;
 
   if ( !fs.existsSync(rootDir) ) {
-    throw new TypeError(`Sorry! The directory where we thought the Chrome profile directories may be found (${rootDir}), does not exist. We can't monitor changes to your bookmarks, so Bookmark Select Mode is not supported.`);
+    throw new TypeError(`Sorry! The directory where we thought the Chrome profile directories may be found (${rootDir}), does not exist. We can't monitor changes to your bookmatearks, so Bookmark Select Mode is not supported.`);
   }
 
-  const bookmarkWatchGlobs = [
+  const bookmatearkWatchGlobs = [
     Path.resolve(rootDir, '**', 'Book*'),
     Path.resolve(rootDir, '**', 'book*')
   ];
 
-  DEBUG && console.log({bookmarkWatchGlobs});
+  DEBUG && console.log({bookmatearkWatchGlobs});
 
-  const observer = watch(bookmarkWatchGlobs, CHOK_OPTS);
+  const observer = watch(bookmatearkWatchGlobs, CHOK_OPTS);
   observer.on('ready', () => {
     DEBUG && console.log(`Ready to watch`);
   });
@@ -137,8 +137,8 @@ function getProfileRootDir() {
   return rootDir;
 }
 
-function flatten(bookmarkObj, {toMap: toMap = false, map} = {}) {
-  const nodes = [...Object.values(bookmarkObj.roots)];
+function flatten(bookmatearkObj, {toMap: toMap = false, map} = {}) {
+  const nodes = [...Object.values(bookmatearkObj.roots)];
   const urls = toMap? (map || new Map()) : [];
   const urlSet = new Set();
   const changes = [];
