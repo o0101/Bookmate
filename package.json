@@ -1,7 +1,7 @@
 {
   "name": "bookmate",
   "version": "1.0.2",
-  "description": "Complete API for Chrome bookmatearks: create, read, update, delete and change notifications.",
+  "description": "WIP - Complete API for Chrome bookmatearks: create, read, update, delete and change notifications.",
   "main": "src/index.js",
   "scripts": {
     "test": "nodemon src/index.js"
