@@ -1,49 +1,55 @@
-import os from 'os';
-import Path from 'path';
-import fs from 'fs';
+// imports (no deps!)
+  import os from 'os';
+  import Path from 'path';
+  import fs from 'fs';
 
-const DEBUG = process.env.DEBUG_BOOKMATE || false;
-const LIBRARY_REPO = `https://github.com/i5ik/bookmate`;
-const EXPECTED_KEYS = [
-  'checksum',
-  'roots',
-  'sync_metadata',
-  'version'
-].sort().join('//');
-// Chrome user data directories by platform. 
-  // Source 1: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md 
-  // Source 2: https://superuser.com/questions/329112/where-are-the-user-profile-directories-of-google-chrome-located-in
-  // Note:
-    // Not all the below are now used or supported by this code
-const UDD_PATHS = {
-  'win': '%LOCALAPPDATA%\\Google\\Chrome\\User Data',
-  'winxp' : '%USERPROFILE%\\Local Settings\\Application Data\\Google\\Chrome\\User Data',
-  'macos' : Path.resolve(os.homedir(), 'Library/Application Support/Google/Chrome'),
-  'nix' : Path.resolve(os.homedir(), '.config/google-chrome'),
-  'chromeos': '/home/chronos',                        /* no support */
-  'ios': 'Library/Application Support/Google/Chrome', /* no support */
-};
-// Translate os.platform() to sensible language
-const PLAT_TABLE = {
-  'darwin': 'macos',
-  'linux': 'nix'
-};
-const FS_WATCH_OPTS = {
-  persistent: false,      /* false: thread runs if files are watched, true: it can exit */
-  unref: true             /* false: thread exit waits on observer exit, true: it doesn't wait */
-};
-const State = {
-  active: new Set(), /* active Bookmark files (we don't know these until file changes) */
-  books: {
+  import {SystemError} from './error.js';
 
-  },
-  mostRecentMountPoint: null  /* the most recently active Bookmark file we watch */
-};
-const PROFILE_DIR_NAME_REGEX = /^(Default|Profile \d+)$/i;
-const isProfileDir = name => PROFILE_DIR_NAME_REGEX.test(name);
-const BOOKMARK_FILE_NAME_REGEX = /^Bookmarks$/i;
-const isBookmarkFile = name => BOOKMARK_FILE_NAME_REGEX.test(name);
+// constants
+  const DEBUG = process.env.DEBUG_BOOKMATE || false;
+  const LIBRARY_REPO = `https://github.com/i5ik/bookmate`;
+  const EXPECTED_KEYS = [
+      'checksum',
+      'roots',
+      'sync_metadata',
+      'version'
+    ].sort().join('//');
+  // Chrome user data directories by platform. 
+    // Source 1: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md 
+    // Source 2: https://superuser.com/questions/329112/where-are-the-user-profile-directories-of-google-chrome-located-in
+    // Note:
+      // Not all the below are now used or supported by this code
+  const UDD_PATHS = {
+    'win': '%LOCALAPPDATA%\\Google\\Chrome\\User Data',
+    'winxp' : '%USERPROFILE%\\Local Settings\\Application Data\\Google\\Chrome\\User Data',
+    'macos' : Path.resolve(os.homedir(), 'Library/Application Support/Google/Chrome'),
+    'nix' : Path.resolve(os.homedir(), '.config/google-chrome'),
+    'chromeos': '/home/chronos',                        /* no support */
+    'ios': 'Library/Application Support/Google/Chrome', /* no support */
+  };
+  // Translate os.platform() to sensible language
+  const PLAT_TABLE = {
+    'darwin': 'macos',
+    'linux': 'nix'
+  };
+  const FS_WATCH_OPTS = {
+    persistent: false,      /* false: thread runs if files are watched, true: it can exit */
+    unref: true             /* false: thread exit waits on observer exit, true: it doesn't wait */
+  };
+  const State = {
+    active: new Set(), /* active Bookmark files (we don't know these until file changes) */
+    books: {
 
+    },
+    mostRecentMountPoint: null  /* the most recently active Bookmark file we watch */
+  };
+  const PROFILE_DIR_NAME_REGEX = /^(Default|Profile \d+)$/i;
+  const isProfileDir = name => PROFILE_DIR_NAME_REGEX.test(name);
+  const BOOKMARK_FILE_NAME_REGEX = /^Bookmarks$/i;
+  const isBookmarkFile = name => BOOKMARK_FILE_NAME_REGEX.test(name);
+
+// get an async stream of changes to any bookmark files of Chrome stable
+// for the current account
 export async function* bookmarkChanges(opts = {}) {
   // try to get the profile directory
     const rootDir = getProfileRootDir();
@@ -75,9 +81,7 @@ export async function* bookmarkChanges(opts = {}) {
       // first read it in
         const filePath = Path.resolve(dirPath, 'Bookmarks');
         if ( fs.existsSync(filePath) ) {
-          const data = fs.readFileSync(filePath);
-          const jData = JSON.parse(data);
-          State.books[filePath] = flatten(jData, {toMap:true});
+          book(filePath);
         }
 
       const options = Object.assign({}, FS_WATCH_OPTS, opts);
@@ -95,12 +99,18 @@ export async function* bookmarkChanges(opts = {}) {
           // listen to everything
           const path = Path.resolve(dirPath, filename);
           DEBUG && console.log(event, path);
+          // but only act if it is a bookmark file
           if ( isBookmarkFile(filename) ) {
-            if ( ! State.active.has(path) ) {
-              State.active.add(path);
-            }
-            State.mostRecentMountPoint = path;
-            // but only act if it is a bookmark file
+            // keep track of recent, active mounts and book an unbooked ones
+              if ( ! State.active.has(path) ) {
+                State.active.add(path);
+              }
+              // it could have just been created
+              if ( ! State.books[filePath] ) {
+                book(filePath);
+              }
+              State.mostRecentMountPoint = path;
+
             DEBUG && console.log(event, path, notifyChange);
             // save the event type and file it happened to
             change = {event, path};
@@ -218,6 +228,7 @@ export async function* bookmarkChanges(opts = {}) {
         } because there was no Bookmark file there.`
       );
     }
+    book(newMountPoint);
     State.fixedMountPoint = newMountPoint;
   }
 
@@ -227,14 +238,18 @@ export async function* bookmarkChanges(opts = {}) {
     // unmount() will operate on the mostRecentMountPoint
     // detected through any changes. If there is no such 
     // mostRecentMountPoint, or if a watch method has not
-    // been run, then fs-like API calls (besides promisesWatch())
-    /// will fail.
+    // been run, then fs-like API calls (besides promisesWatch(),
+    // and in special cases readFileSync()/existsSync()) will fail.
+
   function unmount() {
-    State.fixedMountPoint = false;
+    if ( State.fixedMountPoint ) {
+      State.books[State.fixedMountPoint] = null;
+      State.fixedMountPoint = false;
+    }
   }
 
   function guardMounted() {
-    const mount = State.fixedMountPoint || State.mostRecentMountPoint;
+    const mount = getMount();
     if ( ! mount ) {
       throw new TypeError(`
         Bookmark file is not mounted. No fs-like API operations can be performed.
@@ -249,6 +264,16 @@ export async function* bookmarkChanges(opts = {}) {
     return true;
   }
 
+  function getMount() {
+    return State.fixedMountPoint || State.mostRecentMountPoint;
+  }
+
+  function book(point) {
+    const data = fs.readFileSync(point);
+    const jData = JSON.parse(data);
+    return State.books[point] = flatten(jData, {toMap:true});
+  }
+
 // fs-like API
   // watch for changes
   export async function* promisesWatch(opts) {
@@ -257,52 +282,126 @@ export async function* bookmarkChanges(opts = {}) {
 
   // check if a path exists
   export function existsSync(path) {
-    if ( isURL(path) ) {
-      const url = path;
-      return Object.keys(State.books).filter(key => {
-        if ( State.active.size == 0 ) return true; 
-        return State.active.has(key);
-      }).map(key => State.books[key])
-        .some(map => map.has(url));
-    } else if ( isSerializedPath(path) ) {
-     
+    return getFile(path) === undefined ? false : true; 
+  }
 
-    } else if ( isArrayPath(path) ) {
-      throw new TypeError(`Path URLs not implemented yet.`);
+  // get a bookmark contents
+  export function readFileSync(path, {encoding} = {}) {
+    let content = getFile(path);
+    if ( content ) {
+      content = Buffer.from(JSON.stringify(content));
+      if ( encoding && encoding !== 'buffer' ) {
+        content = content.toString(encoding);
+      }
+      return content;
+    } else {
+      throw new SystemError('ENOENT', `Bookmark ${path} does not exist`);
     }
   }
 
   // get a folder contents
-  export function readdirSync(path) {
-    guardPath(path);
-    path = normalizePath(path);
-  }
-
-  // get a bookmark contents
-  export function readFileSync(path) {
-
+  export function readdirSync(path, {withFileTypes, encoding} = {}) {
+    let folder = getDir(path);
+    if ( folder ) {
+      const enc = encoding === 'buffer' ? s => Buffer.from(s) : s;
+      if ( withFileTypes ) {
+        return folder.children.map(item => {
+          if ( item.type === 'folder' ) {
+            delete item.children;
+          } 
+          return item;
+        });
+      } else {
+        return folder.children.map(item => {
+          if ( Object.hasOwnProperty(item, 'url') ) {
+            return enc(item.url);
+          }
+          return enc(item.name);
+        });
+      }
+    } else {
+      throw new SystemError('ENOENT', `Folder ${path} does not exist`);
+    }
   }
 
   // delete a folder
   export function rmdirSync(path) {
+    path = guardAndNormalizeDirPath(path);
 
   }
 
   // delete a bookmark
   export function unlinkSync(path) {
+    path = guardAndNormalizeFilePath(path);
 
   }
 
 // helpers
+  function getFile(path) {
+    path = guardAndNormalizeFilePath(path);
+    return get(path);
+  }
+
+  function getDir(path) {
+    path = guardAndNormalizeDirPath(path);
+    return get(path);
+  }
+
+  function get(path) {
+    if ( path.length === 1 && isURL(last(path)) ) {
+      const url = last(path);
+      // special behaviour if path is JUST a url (no path)
+      // check every bookmark file under every profile we have seen 
+      // unless there is a mount point
+      const mountPoint = getMount();
+      if ( ! mountPoint ) {
+        return Object.keys(State.books).filter(key => {
+          if ( State.active.size == 0 ) return true; 
+          return State.active.has(key);
+        }).map(key => State.books[key])
+          .find(map => map.has(url))
+          .get(url);
+      } else {
+        return State.books[mountPoint].get(url);
+      }
+    } else {
+      guardMounted(); 
+      const {roots} = getBookmarjObj(getMount());
+      let node = roots[path.shift()];
+      if ( ! node ) {
+        throw new SystemError(
+          'EINVAL', 
+          `Path must begin with a valid root node: ${Object.keys(roots)}`
+        );
+      }
+      while(node && path.length) {
+        const seg = path.shift();
+        if ( ! path.length && isURL(seg) ) {
+          node = node.children.find(child => child.type === 'page' && child.url === seg);
+        } else {
+          node = node.children.find(child => child.type === 'folder' && child.name === seg);
+        }
+      }
+      if ( !node || path.length ) {
+        return undefined; 
+      }
+      return node;
+    }
+  }
+
+  function last(arr) {
+    return arr[arr.length-1];
+  }
+
   function guardAndNormalizePath(path) {
     if ( isSerializedPath(path) ) {
-
+      return JSON.parse(path);
     } else if ( isArrayPath(path) ) {
-
-    } else if ( typeof path === "string" ) {
-
+      return path;
+    } else if ( typeof path === "string" && isURL(path) ) {
+      return [path]; 
     } else {
-      throw new TypeError(
+      throw new SystemError('EINVAL', 
         `Sorry path ${
           path
         } was not in a valid format. Please see the documentation at ${
@@ -311,6 +410,35 @@ export async function* bookmarkChanges(opts = {}) {
       );
     }
   }
+
+  function guardAndNormalizeDirPath(path) {
+    path = guardAndNormalize(path);
+    if ( isURL(last(path)) ) {
+      throw new TypeError(
+        `Sorry, rmdir only works on folders not on bookmarks.
+          Paths that end in URLs refer to bookmarks, those that
+          end in plain strings refer to folders.
+          You passed: ${path} which is a bookmarks path.
+        `
+      );
+    }
+    return path;
+  }
+
+  function guardAndNormalizeFilePath(path) {
+    path = guardAndNormalize(path);
+    if ( !isURL(last(path)) ) {
+      throw new TypeError(
+        `Sorry, unlink only works on bookmarks, not on folders. 
+          Paths that end in URLs refer to bookmarks, those that
+          end in plain strings refer to folders.
+          You passed: ${path} which is not a bookmark path.
+        `
+      );
+    }
+    return path;
+  }
+
   function computeChecksum(bookmarkObject) {
     let checksum = 0;
 
