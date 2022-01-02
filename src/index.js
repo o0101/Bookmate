@@ -39,9 +39,8 @@
   };
   const State = {
     active: new Set(), /* active Bookmark files (we don't know these until file changes) */
-    books: {
-
-    },
+    books: {},
+    maxId: {},
     mostRecentMountPoint: null  /* the most recently active Bookmark file we watch */
   };
   const PROFILE_DIR_NAME_REGEX = /^(Default|Profile \d+)$/i;
@@ -272,7 +271,9 @@ export async function* bookmarkChanges(opts = {}) {
   function book(point) {
     const data = fs.readFileSync(point);
     const jData = JSON.parse(data);
-    State.books[point] = flatten(jData, {toMap:true});
+    const saved = {};
+    State.books[point] = flatten(jData, {toMap:true, saved});
+    State.maxId[point] = saved.maxId + 1;
     State.mostRecentMountPoint = point;
     return State.books[point];
   }
@@ -338,7 +339,7 @@ export async function* bookmarkChanges(opts = {}) {
       const parent = get(path, saved); 
       const index = parent.children.findIndex(({name}) => name === last);
       parent.children.splice(index, 1);
-      sync(saved.mountPoint);
+      sync(saved.mountPoint, saved.bookmarkObj);
     } else {
       throw new SystemError(
         'EPERM', 
@@ -350,18 +351,93 @@ export async function* bookmarkChanges(opts = {}) {
   // delete a bookmark
   export function unlinkSync(path) {
     path = guardAndNormalizeFilePath(path);
-    console.log(path);
+    const last = path.pop();
+    if ( path.length ) {
+      const saved = {};
+      const parent = get(path, saved); 
+      const index = parent.children.findIndex(({url}) => url === last);
+      parent.children.splice(index, 1);
+      sync(saved.mountPoint, saved.bookmarkObj);
+    } else {
+      throw new SystemError(
+        'EINVAL', 
+        `Deleting a Bookmark like ${last} requires a full path, not just a URL.`
+      );
+    }
+  }
+
+  // write a bookmark
+  export function writeFileSync(path, data) {
+    path = guardAndNormalizeFilePath(path);
+    data = guardAndNormalizeFile(data);
+    const last = path.pop();
+    if ( path.length ) {
+      const saved = {};
+      data.url = last; // it must be this way
+      const parent = get(path, saved); 
+      parent.children.push(data);
+      data.id = State.maxId[path]++;
+      data.id = data.id.toString('');
+      data.guid = nextGUID();
+
+      sync(saved.mountPoint, saved.bookmarkObj);
+    } else {
+      throw new SystemError(
+        'EPERM', 
+        `You cannot add a Bookmark to the root.` + 
+        `Adding a Bookmark like ${
+          last
+        } requires you specify a path of folders, not just a URL.`
+      );
+    }
+    
   }
 
 // helpers
+  // compute the chrome bookmark checksum
+    // source 1: https://gist.github.com/simon816/afde4d57d5dab8e80120e35596008834
+    // source 2: https://source.chromium.org/chromium/chromium/src/+/main:components/bookmarks/browser/bookmark_codec.cc;l=130;drc=345ca36745fcd18c97ac6dad6a1437a51dcbeb3e
+  function computeChecksum(bookmarkObj) {
+		const hash = crypto.createHash('md5');
+    const {roots} = bookmarkObj;
+
+		update_digest(roots['bookmark_bar']);
+		update_digest(roots['other']);
+		update_digest(roots['synced']);
+
+		return hash.digest('hex'); 
+
+		function digest_url(url) {
+			hash.update(url.id)
+			hash.update(Buffer.from(url['name'], 'utf16le'))
+			hash.update('url')
+			hash.update(Buffer.from(url['url'], 'ascii'))
+    }	
+
+		function digest_folder(folder) {
+			hash.update(folder.id)
+			hash.update(Buffer.from(folder['name'], 'utf16le'))
+			hash.update('folder')
+			for (const child of folder['children']) {
+        update_digest(child)
+      }
+    }
+
+		function update_digest(node) {
+		  ({'folder': digest_folder, 'url': digest_url})[node['type']](node);
+    }
+  }
+
   function nextUUID() {
     return crypto.randomUUID();
   }
-  function sync(file) {
-    const obj = State.books[file];
-    obj.checksum = 
-    fs.writeFileSync(file, JSON.stringify(obj));
+
+  function sync(file, obj) {
+    obj.checksum = computeChecksum(obj);
+    fs.writeFileSync(file, JSON.stringify(obj,null,2));
+    //fs.writeFileSync(file+'.2', JSON.stringify(obj,null,2));
   }
+
   function getFile(path) {
     path = guardAndNormalizeFilePath(path);
     return get(path);
@@ -397,7 +473,9 @@ export async function* bookmarkChanges(opts = {}) {
       }
     } else {
       guardMounted(); 
-      const {roots} = getBookmarkObj(mountPoint);
+      const bookmarkObj = getBookmarkObj(mountPoint);
+      saved.bookmarkObj = bookmarkObj;
+      const {roots} = bookmarkObj;
       let node = roots[path.shift()];
       if ( ! node ) {
         throw new SystemError(
@@ -470,14 +548,6 @@ export async function* bookmarkChanges(opts = {}) {
     return path;
   }
 
-  /*
-  function computeChecksum(bookmarkObject) {
-    let checksum = 0;
-
-    return checksum.toString(16);
-  }
-  */
-
   function isURL(x) {
     try {
       new URL(x);
@@ -541,15 +611,19 @@ export async function* bookmarkChanges(opts = {}) {
     return rootDir;
   }
 
-  function flatten(bookmarkObj, {toMap: toMap = false, map} = {}) {
+  function flatten(bookmarkObj, {toMap: toMap = false, map, saved: saved = {}} = {}) {
     const nodes = [...Object.values(bookmarkObj.roots)];
     const urls = toMap? (map || new Map()) : [];
     const urlSet = new Set();
     const changes = [];
+    let maxId = 0;
 
     while(nodes.length) {
       const next = nodes.pop();
-      const {name, type, url} = next;
+      const {id, name, type, url} = next;
+      if ( id > maxId ) {
+        maxId = id;
+      }
       switch(type) {
         case "url":
           if ( toMap ) {
@@ -587,7 +661,6 @@ export async function* bookmarkChanges(opts = {}) {
         default:
           console.info("New type", type, next);
           break;
-        
       }
     }
 
@@ -602,6 +675,8 @@ export async function* bookmarkChanges(opts = {}) {
         }
       });
     }
+
+    saved.maxId = maxId;
 
     return map ? changes : urls;
   }
@@ -618,6 +693,9 @@ export async function* bookmarkChanges(opts = {}) {
         new TypeError(`Bookmark file ${filePath} does not have the structure we expect.`)
       );
     }
+    const expectedChecksum = computeChecksum(obj);
+    const {checksum} = obj;
+    console.log(expectedChecksum, checksum);
     return obj;
   }
 

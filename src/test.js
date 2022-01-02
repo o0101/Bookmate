@@ -1,4 +1,8 @@
-import {existsSync, readdirSync, readFileSync, promisesWatch} from './index.js';
+import {
+  existsSync, readdirSync, 
+  readFileSync, promisesWatch,
+  unlinkSync
+} from './index.js';
 
 const TEST_OPTS = {
   // Note 
@@ -21,6 +25,14 @@ export async function test() {
   console.log(val3);
   const val4 = readFileSync(['bookmark_bar', 'fun', 'https://musclewiki.com/']).toString();
   console.log(val4);
+  try {
+    const val5 = unlinkSync('https://musclewiki.com/');
+    console.log(val5);
+  } catch(e) {
+    console.warn(e);
+  }
+  const val6 = unlinkSync(['bookmark_bar', 'fun', 'https://musclewiki.com/'])
+  console.log(val6);
 }
 
 async function watchChanges() {
