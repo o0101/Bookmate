@@ -19,7 +19,7 @@ export class SystemError extends Error {
     super();
     const {errno, message} = ERR_CODES.get(code);
     this.errno = errno;
-    this.message = message;
+    this.message = `${code}: ${message}`;
     if ( additionalMessage ) {
       this.message += `\nAdditional information: ${additionalMessage}`;
     }

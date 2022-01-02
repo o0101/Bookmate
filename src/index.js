@@ -1,4 +1,5 @@
 // imports (no deps!)
+  import crypto from 'crypto';
   import os from 'os';
   import Path from 'path';
   import fs from 'fs';
@@ -67,15 +68,15 @@ export async function* bookmarkChanges(opts = {}) {
     let shuttingDown = false;
 
   // create sufficient observers
-    const dirs = fs.readdirSync(rootDir, {withFileTypes:true}).reduce((Files, dirent) => {
+    const dirs = fs.readdirSync(rootDir, {withFileTypes:true}).reduce((Dirs, dirent) => {
       if ( dirent.isDirectory() && isProfileDir(dirent.name) ) {
-        const filePath = Path.resolve(rootDir, dirent.name);
+        const dirPath = Path.resolve(rootDir, dirent.name);
 
-        if ( fs.existsSync(filePath) ) {
-          Files.push(filePath); 
+        if ( fs.existsSync(dirPath) ) {
+          Dirs.push(dirPath); 
         }
       }
-      return Files;
+      return Dirs;
     }, []);
     for( const dirPath of dirs ) {
       // first read it in
@@ -271,35 +272,39 @@ export async function* bookmarkChanges(opts = {}) {
   function book(point) {
     const data = fs.readFileSync(point);
     const jData = JSON.parse(data);
-    return State.books[point] = flatten(jData, {toMap:true});
+    State.books[point] = flatten(jData, {toMap:true});
+    State.mostRecentMountPoint = point;
+    return State.books[point];
   }
 
 // fs-like API
-  // watch for changes
+  // watch for changes !
   export async function* promisesWatch(opts) {
     yield* bookmarkChanges(opts);
   }
 
-  // check if a path exists
+  // check if a path exists !
   export function existsSync(path) {
-    return getFile(path) === undefined ? false : true; 
+    return get(path) === undefined ? false : true; 
   }
 
-  // get a bookmark contents
+  // get a bookmark contents !
   export function readFileSync(path, {encoding} = {}) {
     let content = getFile(path);
     if ( content ) {
-      content = Buffer.from(JSON.stringify(content));
-      if ( encoding && encoding !== 'buffer' ) {
-        content = content.toString(encoding);
-      }
+      if ( encoding !== 'json' ) {
+        content = Buffer.from(JSON.stringify(content));
+        if ( encoding && encoding !== 'buffer' ) {
+          content = content.toString(encoding);
+        }
+      } 
       return content;
     } else {
       throw new SystemError('ENOENT', `Bookmark ${path} does not exist`);
     }
   }
 
-  // get a folder contents
+  // get a folder contents !
   export function readdirSync(path, {withFileTypes, encoding} = {}) {
     let folder = getDir(path);
     if ( folder ) {
@@ -327,18 +332,36 @@ export async function* bookmarkChanges(opts = {}) {
   // delete a folder
   export function rmdirSync(path) {
     path = guardAndNormalizeDirPath(path);
-    console.log(path);
-
+    const last = path.pop();
+    if ( path.length ) {
+      const saved = {};
+      const parent = get(path, saved); 
+      const index = parent.children.findIndex(({name}) => name === last);
+      parent.children.splice(index, 1);
+      sync(saved.mountPoint);
+    } else {
+      throw new SystemError(
+        'EPERM', 
+        `Deleting a root folder like ${last} is not permitted.`
+      );
+    }
   }
 
   // delete a bookmark
   export function unlinkSync(path) {
     path = guardAndNormalizeFilePath(path);
     console.log(path);
-
   }
 
 // helpers
+  function nextUUID() {
+    return crypto.randomUUID();
+  }
+  function sync(file) {
+    const obj = State.books[file];
+    obj.checksum = 
+    fs.writeFileSync(file, JSON.stringify(obj));
+  }
   function getFile(path) {
     path = guardAndNormalizeFilePath(path);
     return get(path);
@@ -349,26 +372,32 @@ export async function* bookmarkChanges(opts = {}) {
     return get(path);
   }
 
-  function get(path) {
+  // get anything
+    // Note on saved:
+      // saved is a pointer object to pass back metadata 
+      // associated with running the query 
+  function get(path, saved = {}) { 
+    path = Array.from(path);
+    const mountPoint = getMount();
+    saved.mountPoint = mountPoint;
     if ( path.length === 1 && isURL(last(path)) ) {
       const url = last(path);
       // special behaviour if path is JUST a url (no path)
       // check every bookmark file under every profile we have seen 
       // unless there is a mount point
-      const mountPoint = getMount();
       if ( ! mountPoint ) {
         return Object.keys(State.books).filter(key => {
           if ( State.active.size == 0 ) return true; 
           return State.active.has(key);
         }).map(key => State.books[key])
-          .find(map => map.has(url))
-          .get(url);
+          .map(map => map.get(url))
+          .filter(s => s)[0];
       } else {
         return State.books[mountPoint].get(url);
       }
     } else {
       guardMounted(); 
-      const {roots} = getBookmarkObj(getMount());
+      const {roots} = getBookmarkObj(mountPoint);
       let node = roots[path.shift()];
       if ( ! node ) {
         throw new SystemError(
@@ -379,7 +408,7 @@ export async function* bookmarkChanges(opts = {}) {
       while(node && path.length) {
         const seg = path.shift();
         if ( ! path.length && isURL(seg) ) {
-          node = node.children.find(child => child.type === 'page' && child.url === seg);
+          node = node.children.find(child => child.type === 'url' && child.url === seg);
         } else {
           node = node.children.find(child => child.type === 'folder' && child.name === seg);
         }
@@ -469,7 +498,7 @@ export async function* bookmarkChanges(opts = {}) {
   }
 
   function isArrayPath(x) {
-    return Array.isArray(x).every(seg => typeof seg === "string");
+    return Array.isArray(x) && x.every(seg => typeof seg === "string");
   }
 
   function getProfileRootDir() {
