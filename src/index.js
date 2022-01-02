@@ -7,7 +7,8 @@
   import {SystemError} from './error.js';
 
 // constants
-  const DEBUG = process.env.DEBUG_BOOKMATE || false;
+  const DEBUG = process.env.DEBUG_BOOKMATE || true;
+	const CHROME_EPOCH = new Date(1601,0,1).getTime();
   const LIBRARY_REPO = `https://github.com/i5ik/bookmate`;
   const EXPECTED_KEYS = [
       'checksum',
@@ -286,11 +287,13 @@ export async function* bookmarkChanges(opts = {}) {
 
   // check if a path exists !
   export function existsSync(path) {
+    DEBUG && console.log('existsSync');
     return get(path) === undefined ? false : true; 
   }
 
   // get a bookmark contents !
   export function readFileSync(path, {encoding} = {}) {
+    DEBUG && console.log('readFileSync');
     let content = getFile(path);
     if ( content ) {
       if ( encoding !== 'json' ) {
@@ -307,6 +310,7 @@ export async function* bookmarkChanges(opts = {}) {
 
   // get a folder contents !
   export function readdirSync(path, {withFileTypes, encoding} = {}) {
+    DEBUG && console.log('readdirSync');
     let folder = getDir(path);
     if ( folder ) {
       const enc = s => encoding === 'buffer' ? Buffer.from(s) : s;
@@ -332,11 +336,18 @@ export async function* bookmarkChanges(opts = {}) {
 
   // delete a folder
   export function rmdirSync(path) {
+    DEBUG && console.log('rmdirSync');
     path = guardAndNormalizeDirPath(path);
     const last = path.pop();
     if ( path.length ) {
       const saved = {};
       const parent = get(path, saved); 
+      if ( ! parent ) {
+        throw new SystemError(
+          `ENOENT`,
+          `The path ${path} did not exist.`
+        );
+      }
       const index = parent.children.findIndex(({name}) => name === last);
       parent.children.splice(index, 1);
       sync(saved.mountPoint, saved.bookmarkObj);
@@ -350,11 +361,18 @@ export async function* bookmarkChanges(opts = {}) {
 
   // delete a bookmark
   export function unlinkSync(path) {
+    DEBUG && console.log('unlinkSync');
     path = guardAndNormalizeFilePath(path);
     const last = path.pop();
     if ( path.length ) {
       const saved = {};
       const parent = get(path, saved); 
+      if ( ! parent ) {
+        throw new SystemError(
+          `ENOENT`,
+          `The path ${path} did not exist.`
+        );
+      }
       const index = parent.children.findIndex(({url}) => url === last);
       parent.children.splice(index, 1);
       sync(saved.mountPoint, saved.bookmarkObj);
@@ -368,18 +386,23 @@ export async function* bookmarkChanges(opts = {}) {
 
   // write a bookmark
   export function writeFileSync(path, data) {
+    DEBUG && console.log('writeFileSync');
     path = guardAndNormalizeFilePath(path);
     data = guardAndNormalizeFile(data);
     const last = path.pop();
     if ( path.length ) {
       const saved = {};
-      data.url = last; // it must be this way
       const parent = get(path, saved); 
+      if ( ! parent ) {
+        throw new SystemError(
+          `ENOENT`,
+          `The path ${path} did not exist.`
+        );
+      }
+      data.url = last; // it must be this way
+      data.id = '' + State.maxId[saved.mountPoint]++;
+      data.guid = nextUUID();
       parent.children.push(data);
-      data.id = State.maxId[path]++;
-      data.id = data.id.toString('');
-      data.guid = nextGUID();
-
       sync(saved.mountPoint, saved.bookmarkObj);
     } else {
       throw new SystemError(
@@ -390,10 +413,131 @@ export async function* bookmarkChanges(opts = {}) {
         } requires you specify a path of folders, not just a URL.`
       );
     }
-    
   }
 
 // helpers
+  function guardAndNormalizeFile(entry) {
+    return guardAndNormalizeEntry(entry, {strict:'url'});
+  }
+
+  function guardAndNormalizeFolder(entry) {
+    return guardAndNormalizeEntry(entry, {strict:'folder'});
+  }
+
+  function guardAndNormalizeEntry(entry, {strict}) {
+    let data;
+
+    if ( Buffer.isBuffer(entry) ) {
+      data = entry.toString();
+    }
+
+    if ( isSerializedFile(entry) ) {
+      data = JSON.parse(entry);
+    } else if ( typeof entry === "object" && typeof entry.name === "string" ) {
+      data = JSON.parse(JSON.stringify(entry));
+    } else {
+      throw new SystemError(
+        `EINVAL`,
+        `${entry} is not a valid Bookmark entry in any known format.`
+      );
+    }
+
+    let {name, url, type, date_added, date_modified, guid} = data;
+
+    if ( ! strict && ! type ) {
+      if ( url ) {
+        type = 'url';
+      } else {
+        type = 'folder';
+      }
+    } else if ( strict ) {
+      if ( strict === 'url' || strict === 'folder' ) {
+        type = strict; 
+      } else {
+        throw new SystemError(
+          `EINVAL`,
+          `Only 'url' or 'folder' are supported types ` +
+            `for strict-mode guard and normalizing of entries.` +
+            `Received strict:${strict}.`
+        )
+      }
+    }
+
+    const file = {
+      type,
+      id: -1,
+      guid: guid || nextUUID(),
+      date_added: date_added || toChromeTime(Date.now()),
+    };
+
+    if ( type === 'url' ) {
+      file.url = url;
+      file.name = name;
+      if ( ! isURL(url) && data.type !== 'url' ) {
+        throw new SystemError(
+          `EINVAL`,
+          `A bookmark must have a url field that is a valid URL. ` +
+            `Received url: ${url} which was not invalid.`
+        );
+      }
+      if ( !(typeof name === "string") ) {
+        throw new SystemError(
+          `EINVAL`,
+          `A bookmark must have a name field that is a string. ` +
+            `Received name: ${url} which was not.`
+        );
+      }
+    } else if ( type === 'folder' ) {
+      file.name = name; 
+      file.date_modified = date_modified || file.date_added;
+      if ( !(typeof file.name === "string" ) ) {
+        throw new SystemError(
+          `EINVAL`,
+          `A bookmark folder must have a name field that is a string. ` +
+            `Received name: ${url} which was not.`
+        );
+      }
+      {
+        const d = fromChromeTime(file.date_modified);
+        if ( !(Object.prototype.toString.call(d) === '[object Date]' && isFinite(d)) ) {
+          throw new SystemError(
+            `EINVAL`,
+            `A bookmark entries date fields must be valid if supplied. `
+              `Received date_modified: ${file.date_modified} which was not.`
+          );
+          
+        }
+      }
+      {
+        const d = fromChromeTime(file.date_added);
+        if ( !(Object.prototype.toString.call(d) === '[object Date]' && isFinite(d)) ) {
+          throw new SystemError(
+            `EINVAL`,
+            `A bookmark entries date fields must be valid if supplied. `
+              `Received date_added: ${file.date_added} which was not.`
+          );
+          
+        }
+      }
+    } else {
+      throw new SystemError(
+        'EINVAL',
+        `Not a valid type of Bookmark entry ${type}`
+      );
+    }
+   
+    return file;
+  }
+
+  function fromChromeTime(chromeStamp) {
+    return new Date(CHROME_EPOCH + parseInt(chromeStamp, 10)/1000)
+	}
+
+  function toChromeTime(hippyEpochStamp) {
+    const stamp = new Date(hippyEpochStamp).getTime();
+    return (stamp - CHROME_EPOCH)*1000;
+  }
+
   // compute the chrome bookmark checksum
     // source 1: https://gist.github.com/simon816/afde4d57d5dab8e80120e35596008834
     // source 2: https://source.chromium.org/chromium/chromium/src/+/main:components/bookmarks/browser/bookmark_codec.cc;l=130;drc=345ca36745fcd18c97ac6dad6a1437a51dcbeb3e
@@ -434,8 +578,14 @@ export async function* bookmarkChanges(opts = {}) {
 
   function sync(file, obj) {
     obj.checksum = computeChecksum(obj);
+    console.log(Object.keys(obj));
     fs.writeFileSync(file, JSON.stringify(obj,null,2));
-    //fs.writeFileSync(file+'.2', JSON.stringify(obj,null,2));
+    /*
+    if ( fs.existsSync(file+'.bak') ) {
+      fs.unlinkSync(file+'.bak');//, JSON.stringify(obj,null,2));
+    }
+    fs.writeFileSync(file+'.2', JSON.stringify(obj,null,2));
+    */
   }
 
   function getFile(path) {
@@ -523,7 +673,8 @@ export async function* bookmarkChanges(opts = {}) {
   function guardAndNormalizeDirPath(path) {
     path = guardAndNormalizePath(path);
     if ( isURL(last(path)) ) {
-      throw new TypeError(
+      throw new SystemError(
+        `EINVAL`,
         `Sorry, rmdir only works on folders not on bookmarks.
           Paths that end in URLs refer to bookmarks, those that
           end in plain strings refer to folders.
@@ -537,7 +688,8 @@ export async function* bookmarkChanges(opts = {}) {
   function guardAndNormalizeFilePath(path) {
     path = guardAndNormalizePath(path);
     if ( !isURL(last(path)) ) {
-      throw new TypeError(
+      throw new SystemError(
+        `EINVAL`,
         `Sorry, unlink only works on bookmarks, not on folders. 
           Paths that end in URLs refer to bookmarks, those that
           end in plain strings refer to folders.
@@ -553,6 +705,20 @@ export async function* bookmarkChanges(opts = {}) {
       new URL(x);
       return true;
     } catch { 
+      return false;
+    }
+  }
+
+  function isSerializedFile(x) {
+    // perf: cache this array in a lastParsedPath global
+    // which is set to false on failure
+    try {
+      return data.type === 'url' 
+        || data.type === 'folder' 
+        || isURL(data.url)
+        || (typeof data.name === "string")
+      ;
+    } catch {
       return false;
     }
   }
@@ -620,7 +786,8 @@ export async function* bookmarkChanges(opts = {}) {
 
     while(nodes.length) {
       const next = nodes.pop();
-      const {id, name, type, url} = next;
+      let {id, name, type, url} = next;
+      id = parseInt(id);
       if ( id > maxId ) {
         maxId = id;
       }
@@ -696,6 +863,8 @@ export async function* bookmarkChanges(opts = {}) {
     const expectedChecksum = computeChecksum(obj);
     const {checksum} = obj;
     console.log(expectedChecksum, checksum);
+    console.log(obj.sync_metadata, filePath);
+    console.log(Buffer.from(obj.sync_metadata||'', 'base64').toString());
     return obj;
   }
 
