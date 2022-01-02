@@ -220,7 +220,7 @@ export async function* bookmarkChanges(opts = {}) {
     // regardless of any changes detected leading to a 
     // most recent mount point, this functions will
     // bind all fs-like API functions to the newMountPoint 
-  function mount(newMountPoint) {
+  export function mount(newMountPoint) {
     if ( ! fs.existsSync(newMountPoint) || ! isBookmarkFile(Path.basename(newMountPoint)) ) {
       throw new TypeError(
         `Could not remount onto ${
@@ -241,14 +241,14 @@ export async function* bookmarkChanges(opts = {}) {
     // been run, then fs-like API calls (besides promisesWatch(),
     // and in special cases readFileSync()/existsSync()) will fail.
 
-  function unmount() {
+  export function unmount() {
     if ( State.fixedMountPoint ) {
       State.books[State.fixedMountPoint] = null;
       State.fixedMountPoint = false;
     }
   }
 
-  function guardMounted() {
+  export function guardMounted() {
     const mount = getMount();
     if ( ! mount ) {
       throw new TypeError(`
@@ -303,7 +303,7 @@ export async function* bookmarkChanges(opts = {}) {
   export function readdirSync(path, {withFileTypes, encoding} = {}) {
     let folder = getDir(path);
     if ( folder ) {
-      const enc = encoding === 'buffer' ? s => Buffer.from(s) : s;
+      const enc = s => encoding === 'buffer' ? Buffer.from(s) : s;
       if ( withFileTypes ) {
         return folder.children.map(item => {
           if ( item.type === 'folder' ) {
@@ -313,7 +313,7 @@ export async function* bookmarkChanges(opts = {}) {
         });
       } else {
         return folder.children.map(item => {
-          if ( Object.hasOwnProperty(item, 'url') ) {
+          if ( Object.prototype.hasOwnProperty.call(item, 'url') ) {
             return enc(item.url);
           }
           return enc(item.name);
@@ -327,12 +327,14 @@ export async function* bookmarkChanges(opts = {}) {
   // delete a folder
   export function rmdirSync(path) {
     path = guardAndNormalizeDirPath(path);
+    console.log(path);
 
   }
 
   // delete a bookmark
   export function unlinkSync(path) {
     path = guardAndNormalizeFilePath(path);
+    console.log(path);
 
   }
 
@@ -366,7 +368,7 @@ export async function* bookmarkChanges(opts = {}) {
       }
     } else {
       guardMounted(); 
-      const {roots} = getBookmarjObj(getMount());
+      const {roots} = getBookmarkObj(getMount());
       let node = roots[path.shift()];
       if ( ! node ) {
         throw new SystemError(
@@ -412,7 +414,7 @@ export async function* bookmarkChanges(opts = {}) {
   }
 
   function guardAndNormalizeDirPath(path) {
-    path = guardAndNormalize(path);
+    path = guardAndNormalizePath(path);
     if ( isURL(last(path)) ) {
       throw new TypeError(
         `Sorry, rmdir only works on folders not on bookmarks.
@@ -426,7 +428,7 @@ export async function* bookmarkChanges(opts = {}) {
   }
 
   function guardAndNormalizeFilePath(path) {
-    path = guardAndNormalize(path);
+    path = guardAndNormalizePath(path);
     if ( !isURL(last(path)) ) {
       throw new TypeError(
         `Sorry, unlink only works on bookmarks, not on folders. 
@@ -439,11 +441,13 @@ export async function* bookmarkChanges(opts = {}) {
     return path;
   }
 
+  /*
   function computeChecksum(bookmarkObject) {
     let checksum = 0;
 
     return checksum.toString(16);
   }
+  */
 
   function isURL(x) {
     try {

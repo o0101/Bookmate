@@ -5,7 +5,8 @@
   "description": "WIP - Complete API for Chrome bookmatearks: create, read, update, delete and change notifications.",
   "main": "src/index.js",
   "scripts": {
-    "test": "nodemon --inspect src/test.js"
+    "test": "nodemon --inspect src/test.js",
+    "lint": "watch -n 5 npx eslint ."
   },
   "repository": {
     "type": "git",
@@ -31,6 +32,7 @@
   },
   "homepage": "https://github.com/i5ik/bookmate#readme",
   "devDependencies": {
+    "eslint": "^8.6.0",
     "nodemon": "^2.0.15"
   }
 }
