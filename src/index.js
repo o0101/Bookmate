@@ -3,6 +3,13 @@ import Path from 'path';
 import fs from 'fs';
 
 const DEBUG = process.env.DEBUG_BOOKMATE || false;
+const LIBRARY_REPO = `https://github.com/i5ik/bookmate`;
+const EXPECTED_KEYS = [
+  'checksum',
+  'roots',
+  'sync_metadata',
+  'version'
+].sort().join('//');
 // Chrome user data directories by platform. 
   // Source 1: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md 
   // Source 2: https://superuser.com/questions/329112/where-are-the-user-profile-directories-of-google-chrome-located-in
@@ -29,7 +36,8 @@ const State = {
   active: new Set(), /* active Bookmark files (we don't know these until file changes) */
   books: {
 
-  }
+  },
+  mostRecentMountPoint: null  /* the most recently active Bookmark file we watch */
 };
 const PROFILE_DIR_NAME_REGEX = /^(Default|Profile \d+)$/i;
 const isProfileDir = name => PROFILE_DIR_NAME_REGEX.test(name);
@@ -91,6 +99,7 @@ export async function* bookmarkChanges(opts = {}) {
             if ( ! State.active.has(path) ) {
               State.active.add(path);
             }
+            State.mostRecentMountPoint = path;
             // but only act if it is a bookmark file
             DEBUG && console.log(event, path, notifyChange);
             // save the event type and file it happened to
@@ -195,44 +204,119 @@ export async function* bookmarkChanges(opts = {}) {
   }
 }
 
-// check if a path exists
-export function existsSync(path) {
-  if ( isURL(path) ) {
-    const url = path;
-    return Object.keys(State.books).filter(key => {
-      if ( State.active.size == 0 ) return true; 
-      return State.active.has(key);
-    }).map(key => State.books[key])
-      .some(map => map.has(url));
-  } else if ( isSerializedPath(path) ) {
-   
-
-  } else if ( Array.isArray(path) ) {
-    throw new TypeError(`Path URLs not implemented yet.`);
+// mount functions
+  // set a mount point (for fs-like API calls)
+  // Note:
+    // regardless of any changes detected leading to a 
+    // most recent mount point, this functions will
+    // bind all fs-like API functions to the newMountPoint 
+  function mount(newMountPoint) {
+    if ( ! fs.existsSync(newMountPoint) || ! isBookmarkFile(Path.basename(newMountPoint)) ) {
+      throw new TypeError(
+        `Could not remount onto ${
+          newMountPoint
+        } because there was no Bookmark file there.`
+      );
+    }
+    State.fixedMountPoint = newMountPoint;
   }
-}
 
-// get a folder contents
-export function readdirSync(path) {
+  // clear a fixed mount point
+  // Note:
+    // any subsequent fs-like API calls made after calling 
+    // unmount() will operate on the mostRecentMountPoint
+    // detected through any changes. If there is no such 
+    // mostRecentMountPoint, or if a watch method has not
+    // been run, then fs-like API calls (besides promisesWatch())
+    /// will fail.
+  function unmount() {
+    State.fixedMountPoint = false;
+  }
 
-}
+  function guardMounted() {
+    const mount = State.fixedMountPoint || State.mostRecentMountPoint;
+    if ( ! mount ) {
+      throw new TypeError(`
+        Bookmark file is not mounted. No fs-like API operations can be performed.
+        You may:
+          1) Try setting a mount point with mount(), or 
+          2) observing for bookmark changes with promisesWatch() 
+            (or, equivalently bookmarkChanges()) while you manually add, 
+            delete or alter your bookmarks from your browser, to try
+            to automatically detect a valid mount point.
+      `);
+    }
+    return true;
+  }
 
-// get a bookmark contents
-export function readFileSync(path) {
+// fs-like API
+  // watch for changes
+  export async function* promisesWatch(opts) {
+    yield* bookmarkChanges(opts);
+  }
 
-}
+  // check if a path exists
+  export function existsSync(path) {
+    if ( isURL(path) ) {
+      const url = path;
+      return Object.keys(State.books).filter(key => {
+        if ( State.active.size == 0 ) return true; 
+        return State.active.has(key);
+      }).map(key => State.books[key])
+        .some(map => map.has(url));
+    } else if ( isSerializedPath(path) ) {
+     
 
-// delete a folder
-export function rmdirSync(path) {
+    } else if ( isArrayPath(path) ) {
+      throw new TypeError(`Path URLs not implemented yet.`);
+    }
+  }
 
-}
+  // get a folder contents
+  export function readdirSync(path) {
+    guardPath(path);
+    path = normalizePath(path);
+  }
 
-// delete a bookmark
-export function unlinkSync(path) {
+  // get a bookmark contents
+  export function readFileSync(path) {
 
-}
+  }
+
+  // delete a folder
+  export function rmdirSync(path) {
+
+  }
+
+  // delete a bookmark
+  export function unlinkSync(path) {
+
+  }
 
 // helpers
+  function guardAndNormalizePath(path) {
+    if ( isSerializedPath(path) ) {
+
+    } else if ( isArrayPath(path) ) {
+
+    } else if ( typeof path === "string" ) {
+
+    } else {
+      throw new TypeError(
+        `Sorry path ${
+          path
+        } was not in a valid format. Please see the documentation at ${
+          LIBRARY_REPO
+        }`
+      );
+    }
+  }
+  function computeChecksum(bookmarkObject) {
+    let checksum = 0;
+
+    return checksum.toString(16);
+  }
+
   function isURL(x) {
     try {
       new URL(x);
@@ -246,10 +330,14 @@ export function unlinkSync(path) {
     // perf: cache this array in a lastParsedPath global
     // which is set to false on failure
     try {
-      return Array.isArray(JSON.parse(x)).every(seg => typeof seg === "string");
+      return isArrayPath(JSON.parse(x));
     } catch {
       return false;
     }
+  }
+
+  function isArrayPath(x) {
+    return Array.isArray(x).every(seg => typeof seg === "string");
   }
 
   function getProfileRootDir() {
@@ -355,6 +443,21 @@ export function unlinkSync(path) {
     }
 
     return map ? changes : urls;
+  }
+
+  function getBookmarkObj(filePath) {
+    let obj;
+    try {
+      obj = JSON.parse(fs.readFileSync(filePath).toString());
+    } catch(e) {
+      throw new TypeError(`Could not load Bookmark file ${filePath}, because: ${e+''}`);
+    }
+    if ( Object.keys(obj).sort().join('//') !== EXPECTED_KEYS ) {
+      console.warn(
+        new TypeError(`Bookmark file ${filePath} does not have the structure we expect.`)
+      );
+    }
+    return obj;
   }
 
   // source: https://stackoverflow.com/a/33017068
