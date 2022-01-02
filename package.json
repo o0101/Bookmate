@@ -1,10 +1,11 @@
 {
   "name": "bookmate",
   "version": "1.0.4",
+  "type": "module",
   "description": "WIP - Complete API for Chrome bookmatearks: create, read, update, delete and change notifications.",
   "main": "src/index.js",
   "scripts": {
-    "test": "nodemon src/index.js"
+    "test": "nodemon --inspect src/test.js"
   },
   "repository": {
     "type": "git",
@@ -29,7 +30,7 @@
     "url": "https://github.com/i5ik/bookmate/issues"
   },
   "homepage": "https://github.com/i5ik/bookmate#readme",
-  "dependencies": {
-    "chokidar": "^3.5.2"
+  "devDependencies": {
+    "nodemon": "^2.0.15"
   }
 }
