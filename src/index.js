@@ -50,6 +50,19 @@
   const BOOKMARK_FILE_NAME_REGEX = /^Bookmarks$/i;
   const isBookmarkFile = name => BOOKMARK_FILE_NAME_REGEX.test(name);
 
+const Bookmate = {
+  bookmarkChanges,
+  promisesWatch,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+  getProfileRootDir,
+  saveWithChecksum,
+  mount,
+  unmount
+};
+export default Bookmate;
 // get an async stream of changes to any bookmark files of Chrome stable
 // for the current account
 export async function* bookmarkChanges(opts = {}) {
@@ -249,7 +262,7 @@ export async function* bookmarkChanges(opts = {}) {
     }
   }
 
-  export function guardMounted() {
+  function guardMounted() {
     const mount = getMount();
     if ( ! mount ) {
       throw new TypeError(`
