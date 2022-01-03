@@ -1,4 +1,7 @@
+import fs from 'fs';
 import {
+  getProfileRootDir,
+  mkdirSync,
   existsSync, readdirSync, 
   readFileSync, promisesWatch,
   writeFileSync,
@@ -24,21 +27,20 @@ export async function test() {
   console.log(val2);
   const val3 = readdirSync(['bookmark_bar', 'fun']);
   console.log(val3);
+  //mkdirSync(['bookmark_bar', 'fun', 'happy'+Math.random()]);
   try {
-    const val4 = readFileSync(['bookmark_bar', 'fun', 'https://musclewiki.com/']).toString();
+    const val4 = readFileSync(['bookmark_bar', 'fun', 'http://nolannicholson.com/bosco-3d/']).toString();
     console.log(val4);
   } catch(e) {
     console.warn(e);
   }
   try {
-    const val5 = unlinkSync('https://musclewiki.com/');
+    const val5 = unlinkSync(['bookmark_bar', 'fun', 'https://musclewiki.com/']);
     console.log(val5);
   } catch(e) {
     console.warn(e);
   }
   /*
-  const val6 = unlinkSync(['bookmark_bar', 'fun', 'https://musclewiki.com/'])
-  console.log(val6);
   const val7 = writeFileSync(['bookmark_bar', 'fun', 'https://musclewiki.com/'], {
     type: 'url',
     name: 'MuscleWiki -- BIG TITS AND BIG BITS AND BICEPS!'
