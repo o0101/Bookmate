@@ -10,7 +10,7 @@
   const DEBUG = process.env.DEBUG_BOOKMATE || false;
 	const CHROME_EPOCH = new Date(1601,0,1).getTime();
   const LIBRARY_REPO = `https://github.com/i5ik/bookmate`;
-  const TRASH_PATH = ['other', 'Trash (delete by Bookmate)'];
+  //const TRASH_PATH = ['other', 'Trash (delete by Bookmate)'];
   const EXPECTED_KEYS = [
       'checksum',
       'roots',
@@ -242,7 +242,6 @@ export async function* bookmarkChanges(opts = {}) {
     // mostRecentMountPoint, or if a watch method has not
     // been run, then fs-like API calls (besides promisesWatch(),
     // and in special cases readFileSync()/existsSync()) will fail.
-
   export function unmount() {
     if ( State.fixedMountPoint ) {
       State.books[State.fixedMountPoint] = null;
@@ -317,66 +316,6 @@ export async function* bookmarkChanges(opts = {}) {
     }
   }
 
-  // delete an entry (actually move it to Trash)
-  export function unlinkSync(path) {
-    path = guardAndNormalizePath(path);
-    if ( ! existsSync(TRASH_PATH) ) {
-      mkdirSync(TRASH_PATH);
-    }
-    const tip = Last(path);
-    renameSync(path, [...TRASH_PATH, tip]);
-  }
-
-  // rename an entry
-  export function renameSync(oldPath, newPath) {
-    if ( ! existsSync(oldPath) ) {
-      throw new SystemError(
-        `ENOENT`,
-        `Source path ${oldPath} does not exist so it cannot be renamed.`
-      );
-    }
-    oldPath = guardAndNormalizePath(oldPath);
-    newPath = guardAndNormalizePath(newPath);
-    const oldType = pathType(oldPath); 
-    const newType = pathType(newPath);
-    if ( oldType !== newType ) {
-      throw new SystemError(
-        `EINVAL`,
-        `Source and destination paths must have the same type, but they were: ${
-          oldType
-        } and ${
-          newType
-        }`
-      );
-    }
-
-    let node = get(oldPath);
-
-    remove(oldPath);
-
-    // Semantics Idea
-      // could actually check if newPath exists first 
-      // and overwrite instead of pushing
-
-    const saved = {};
-    const newLast = newPath.pop();
-    const newParent = get(newPath, saved);
-  
-    if ( oldType === 'url' ) {
-      // it must be this way
-      node.url = newLast;
-      node = guardAndNormalizeFile(node);
-    } else {
-      node.name = newLast;
-      node = guardAndNormalizeFolder(node);
-    }
-    node.id = '' + State.maxId[getMount()]++;
-    //node.guid = nextUUID();
-
-    newParent.children.push(node);
-    sync(saved.mountPoint, saved.bookmarkObj);
-  }
-
   // check if a path exists !
   export function existsSync(path) {
     DEBUG && console.log('existsSync');
@@ -426,66 +365,6 @@ export async function* bookmarkChanges(opts = {}) {
     }
   }
 
-  // delete a folder
-  export function rmdirSync(path) {
-    DEBUG && console.log('rmdirSync');
-    path = guardAndNormalizeFolderPath(path);
-    const last = path.pop();
-    if ( path.length ) {
-      const saved = {};
-      const parent = get(path, saved); 
-      if ( ! parent ) {
-        throw new SystemError(
-          `ENOENT`,
-          `The path ${path} did not exist.`
-        );
-      }
-      const index = parent.children.findIndex(({name}) => name === last);
-      parent.children.splice(index, 1);
-      sync(saved.mountPoint, saved.bookmarkObj);
-    } else {
-      throw new SystemError(
-        'EPERM', 
-        `Deleting a root folder like ${last} is not permitted.`
-      );
-    }
-  }
-
-  // internal use - temporarily delete a bookmark
-  // Note
-    // this only works temporarily because Chrome will sync
-    // any entries that do not have sufficient 'deleted' 
-    // metadata back into the local copy, and there's 
-    // no simple way to generate that metadata using 
-    // the filesystem that I have seen.
-    // That's the reason we implement 
-    // unlinkSync as a 'move to Trash'
-  function remove(path) {
-    DEBUG && console.log('(internal) remove');
-    // handle folder entry
-    console.info(`Handle folder entries`);
-    path = guardAndNormalizeFilePath(path);
-    const last = path.pop();
-    if ( path.length ) {
-      const saved = {};
-      const parent = get(path, saved); 
-      if ( ! parent ) {
-        throw new SystemError(
-          `ENOENT`,
-          `The path ${path} did not exist.`
-        );
-      }
-      const index = parent.children.findIndex(({url}) => url === last);
-      parent.children.splice(index, 1);
-      sync(saved.mountPoint, saved.bookmarkObj);
-    } else {
-      throw new SystemError(
-        'EINVAL', 
-        `Deleting a Bookmark like ${last} requires a full path, not just a URL.`
-      );
-    }
-  }
-
   // write a bookmark
   export function writeFileSync(path, data) {
     DEBUG && console.log('writeFileSync');
@@ -517,8 +396,8 @@ export async function* bookmarkChanges(opts = {}) {
   }
 
 // helpers
+  /*
   function pathType(path) {
-    const last = Last(path);
     try {
       guardAndNormalizeFilePath(path);
       return 'url';
@@ -532,6 +411,7 @@ export async function* bookmarkChanges(opts = {}) {
       `Path ${path} is neither a URL nor a folder and not of any known type`
     );
   }
+  */
 
   function guardAndNormalizeFile(entry) {
     return guardAndNormalizeEntry(entry, {strict:'url'});
@@ -687,7 +567,7 @@ export async function* bookmarkChanges(opts = {}) {
     }
 
 		function update_digest(node) {
-		  ({'folder': digest_folder, 'url': digest_url})[node['type']](node);
+      ({'folder': digest_folder, 'url': digest_url})[node['type']](node);
     }
   }
 
@@ -828,7 +708,7 @@ export async function* bookmarkChanges(opts = {}) {
     }
   }
 
-  function isSerializedFile(x) {
+  function isSerializedFile(data) {
     // perf: cache this array in a lastParsedPath global
     // which is set to false on failure
     try {
@@ -991,3 +871,133 @@ export async function* bookmarkChanges(opts = {}) {
       return process.env[key];
     });
   }
+
+// planned but incomplete
+// Notes:
+  // These methods are limited by the current approach
+  // (editing the Bookmark file)
+  // Their effects Sync but works locally 
+  // which probably means it only works temporarily
+  // until sync notices something is amiss somehoh
+  /*
+    // delete an entry (actually move it to Trash)
+    export function unlinkSync(path) {
+      path = guardAndNormalizePath(path);
+      if ( ! existsSync(TRASH_PATH) ) {
+        mkdirSync(TRASH_PATH);
+      }
+      const tip = Last(path);
+      renameSync(path, [...TRASH_PATH, tip]);
+    }
+
+    // rename an entry
+    export function renameSync(oldPath, newPath) {
+      if ( ! existsSync(oldPath) ) {
+        throw new SystemError(
+          `ENOENT`,
+          `Source path ${oldPath} does not exist so it cannot be renamed.`
+        );
+      }
+      oldPath = guardAndNormalizePath(oldPath);
+      newPath = guardAndNormalizePath(newPath);
+      const oldType = pathType(oldPath); 
+      const newType = pathType(newPath);
+      if ( oldType !== newType ) {
+        throw new SystemError(
+          `EINVAL`,
+          `Source and destination paths must have the same type, but they were: ${
+            oldType
+          } and ${
+            newType
+          }`
+        );
+      }
+
+      let node = get(oldPath);
+
+      remove(oldPath);
+
+      // Semantics Idea
+        // could actually check if newPath exists first 
+        // and overwrite instead of pushing
+
+      const saved = {};
+      const newLast = newPath.pop();
+      const newParent = get(newPath, saved);
+    
+      if ( oldType === 'url' ) {
+        // it must be this way
+        node.url = newLast;
+        node = guardAndNormalizeFile(node);
+      } else {
+        node.name = newLast;
+        node = guardAndNormalizeFolder(node);
+      }
+      node.id = '' + State.maxId[getMount()]++;
+      //node.guid = nextUUID();
+
+      newParent.children.push(node);
+      sync(saved.mountPoint, saved.bookmarkObj);
+    }
+
+    // delete a folder
+    export function rmdirSync(path) {
+      DEBUG && console.log('rmdirSync');
+      path = guardAndNormalizeFolderPath(path);
+      const last = path.pop();
+      if ( path.length ) {
+        const saved = {};
+        const parent = get(path, saved); 
+        if ( ! parent ) {
+          throw new SystemError(
+            `ENOENT`,
+            `The path ${path} did not exist.`
+          );
+        }
+        const index = parent.children.findIndex(({name}) => name === last);
+        parent.children.splice(index, 1);
+        sync(saved.mountPoint, saved.bookmarkObj);
+      } else {
+        throw new SystemError(
+          'EPERM', 
+          `Deleting a root folder like ${last} is not permitted.`
+        );
+      }
+    }
+
+    // internal use - temporarily delete a bookmark
+    // Note
+      // this only works temporarily because Chrome will sync
+      // any entries that do not have sufficient 'deleted' 
+      // metadata back into the local copy, and there's 
+      // no simple way to generate that metadata using 
+      // the filesystem that I have seen.
+      // That's the reason we implement 
+      // unlinkSync as a 'move to Trash'
+    function remove(path) {
+      DEBUG && console.log('(internal) remove');
+      // handle folder entry
+      console.info(`Handle folder entries`);
+      path = guardAndNormalizeFilePath(path);
+      const last = path.pop();
+      if ( path.length ) {
+        const saved = {};
+        const parent = get(path, saved); 
+        if ( ! parent ) {
+          throw new SystemError(
+            `ENOENT`,
+            `The path ${path} did not exist.`
+          );
+        }
+        const index = parent.children.findIndex(({url}) => url === last);
+        parent.children.splice(index, 1);
+        sync(saved.mountPoint, saved.bookmarkObj);
+      } else {
+        throw new SystemError(
+          'EINVAL', 
+          `Deleting a Bookmark like ${last} requires a full path, not just a URL.`
+        );
+      }
+    }
+  */
+
