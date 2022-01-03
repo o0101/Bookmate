@@ -370,6 +370,8 @@ export async function* bookmarkChanges(opts = {}) {
       node.name = newLast;
       node = guardAndNormalizeFolder(node);
     }
+    node.id = '' + State.maxId[getMount()]++;
+    //node.guid = nextUUID();
 
     newParent.children.push(node);
     sync(saved.mountPoint, saved.bookmarkObj);
@@ -689,13 +691,17 @@ export async function* bookmarkChanges(opts = {}) {
     }
   }
 
+  export function saveWithChecksum(filePath) {
+    const obj = getBookmarkObj(filePath);
+    sync(filePath, obj);
+  }
+
   function nextUUID() {
     return crypto.randomUUID();
   }
 
   function sync(file, obj) {
     obj.checksum = computeChecksum(obj);
-    console.log(Object.keys(obj));
     fs.writeFileSync(file, JSON.stringify(obj,null,2));
   }
 

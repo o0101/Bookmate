@@ -1,5 +1,6 @@
 import fs from 'fs';
 import {
+  renameSync,
   getProfileRootDir,
   mkdirSync,
   existsSync, readdirSync, 
@@ -21,32 +22,14 @@ test();
 
 export async function test() {
   watchChanges();
-  const val = readdirSync(['bookmark_bar'], {withFileTypes:true});
-  console.log(val);
-  const val2 = readFileSync('https://www.clearme.com/enroll').toString();
-  console.log(val2);
-  const val3 = readdirSync(['bookmark_bar', 'fun']);
-  console.log(val3);
-  //mkdirSync(['bookmark_bar', 'fun', 'happy'+Math.random()]);
-  try {
-    const val4 = readFileSync(['bookmark_bar', 'fun', 'http://nolannicholson.com/bosco-3d/']).toString();
-    console.log(val4);
-  } catch(e) {
-    console.warn(e);
-  }
-  try {
-    const val5 = unlinkSync(['bookmark_bar', 'fun', 'https://musclewiki.com/']);
-    console.log(val5);
-  } catch(e) {
-    console.warn(e);
-  }
-  /*
-  const val7 = writeFileSync(['bookmark_bar', 'fun', 'https://musclewiki.com/'], {
-    type: 'url',
-    name: 'MuscleWiki -- BIG TITS AND BIG BITS AND BICEPS!'
-  });
-  console.log(val7);
-  */
+  const {guid,id} = readFileSync(
+    ['bookmark_bar', 'b', 'https://abc.xyz/'],
+    {encoding:'json'}
+  )
+  writeFileSync(
+    ['bookmark_bar', 'b', 'https://abc.xyz/'],
+    { name: '', url: '', id, guid}
+  );
 }
 
 async function watchChanges() {
