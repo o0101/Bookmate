@@ -60,6 +60,8 @@ But if you're use-case is different to that, if maybe it includes adding bookmar
 
 Well now you can do all those things! So, no stress friend--unfurrough that brow, it's gonna be OK 😄
 
+The weird 🔦 thing about this...is that you are able to use Chrome bookmarks as a globally-synced single-tenant append-only key value multi-store, with the keys being valid URLs, and the values being the bookmark name text. Very interesting! Not that I am suggesting you do this, firstly, whether you are *not discouraged* from doing this or not is an unknown, but presumably the Sync team (if there is such a thing) would be unhappy with people using their infra for such purposes. But it certainly enables some interesting bookmark-related use cases. And if it were *not discouraged* it would most definitely enable some interesting use cases with respect to saving various forms of app data specific to a person or Profile, for various Chrome-related apps that existed outside of the Chrome Extensions WebStore and other places. 
+
 ## Get
 
 ```shell
@@ -147,6 +149,10 @@ gets around to finishing these docs.
     - [x] Unfortuantely Moves are neither propagated by Sync, but nor are they reverted. It's not a loophole, because: 1) The "deletions" (actually moves to a [Trash folder](https://github.com/i5ik/Bookmate/blob/main/src/index.js#L13) we `mkdirSync()` are not propagated to other sync clients (other Chrome browsers on other devices where you are signed in); and 2) it's unclear how long these may actually persist for, if some other change triggers sync to identify these nodes have been moved, then the local changes may be reverted. So I think it's better to avoid providing this possibly unreliable API, than to do so, and end up breaking the implicit promise people took its existence to mean, which they didn't in any case dissuade themselves of by reading the docs or code details more closely. 
 - [x] abandon current attempts to implement deletion, renaming and moving that is not reverted by Chrome's [Unified Sync and Storage](https://www.chromium.org/developers/design-documents/sync/unified-sync-and-storage-overview) and [Sync Model API](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/sync/model_api.md)
 - [ ] try again in future to examine source code, monitor local filesystem in Chrome Profile directory, and otherwise attempt to innovate a way to perform local changes to the Bookmarks store (besides adds, which we can do, and which *are* propagated), *and* emit somehow the correct sync metadata to ensure: 1) those changes are propagated, and; 2) those changes are not reverted by sync merging in remote 'corrections'. 
+
+## Disclaimer
+
+No connection or endorsement expressed or implied with Google, Alphabet, Chrome, Sync or the Chromium authors.
 
 ## Contributions ❤️
 
