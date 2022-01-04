@@ -2,13 +2,39 @@
 
 **An append-only key-value store built on Chrome bookmarks, plus an asychronous stream of Bookmark changes**
 
-# Features
+## Features
 
-- a simple [fs](https://nodejs.org/docs/latest/api/fs.html#file-system)-like API: readFileSync, writeFileSync, promisesWatch etc
+- a simple [fs-like](https://nodejs.org/docs/latest/api/fs.html#file-system) [API: readFileSync, writeFileSync, promisesWatch etc](#api)
 - automatically locate the right Chrome Profile directory by observing bookmark changes
 - efficiently observe and emit Bookmark change events as a readable stream 
 
-# Implementation Progress & Roadmap
+## API
+
+## `readFileSync(path[, options])`
+
+- `path` [`<SerializedPathArray>`](#type-serializedpatharray) | [`<PathArray>`](#type-patharray) | [`<URL>`](https://nodejs.org/docs/latest/api/url.html#the-whatwg-url-api) path to Bookmark URL 
+- `options` [`<Object>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)
+  - `encoding` [`<string>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type) | [`<null>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Null_type) **Default:** `null`
+- Returns: [`<string>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type) | [`<Buffer>`](https://nodejs.org/docs/latest/api/buffer.html#class-buffer) | [`<BookmarkNode>`](#type-bookmarknode)
+
+Returns the contents of the Bookmark at the path.
+
+If the encoding option is `'json'` then this function returns a [`<BookmarkNode>`](#type-bookmarknode). Otherwise, if the encoding option is specified then this function returns a string, otherwise it returns a buffer.
+
+It cannot be called on a folder. To get the contents of a folder use [`readdirSync()`](#readdirsync-path-options)
+
+## `readdirSync(path[, options])`
+
+- `path` [`<SerializedPathArray>`](#type-serializedpatharray) | [`<PathArray>`](#type-patharray) 
+- `options` [`<Object>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)
+  - `withFileTypes` [`<boolean>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Boolean_type) **Default:** `false`
+- Returns: [`<string[]>`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type) | [`<BookmarkNode[]>`](#type-bookmarknode)
+
+Reads the contents of the folder.
+
+If `options.withFileTypes` is set to true, the result will contain [`<BookmarkNode>`](#type-bookmarknode) objects.
+
+## Implementation Progress & Roadmap
 
 - [x] emit change events for URL bookmark additions, deletions and name changes
 - [x] existsSync
@@ -35,3 +61,11 @@
     - [x] Unfortuantely Moves are neither propagated by Sync, but nor are they reverted. It's not a loophole, because: 1) The "deletions" (actually moves to a [Trash folder](https://github.com/i5ik/Bookmate/blob/main/src/index.js#L13) we `mkdirSync()` are not propagated to other sync clients (other Chrome browsers on other devices where you are signed in); and 2) it's unclear how long these may actually persist for, if some other change triggers sync to identify these nodes have been moved, then the local changes may be reverted. So I think it's better to avoid providing this possibly unreliable API, than to do so, and end up breaking the implicit promise people took its existence to mean, which they didn't in any case dissuade themselves of by reading the docs or code details more closely. 
 - [x] abandon current attempts to implement deletion, renaming and moving that is not reverted by Chrome's [Unified Sync and Storage](https://www.chromium.org/developers/design-documents/sync/unified-sync-and-storage-overview) and [Sync Model API](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/sync/model_api.md)
 - [ ] try again in future to examine source code, monitor local filesystem in Chrome Profile directory, and otherwise attempt to innovate a way to perform local changes to the Bookmarks store (besides adds, which we can do, and which *are* propagated), *and* emit somehow the correct sync metadata to ensure: 1) those changes are propagated, and; 2) those changes are not reverted by sync merging in remote 'corrections'. 
+
+## Contributions
+
+Welcome! It's all kind of new so many you can help also set up a contributing guidelines, documentation and so on 😹
+
+## License
+
+AGPL-3.0 &copy; [Cris](https://github.com/i5ik)
