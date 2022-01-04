@@ -111,6 +111,12 @@ And other additional functions to document currently are:
 - saveWithChecksum
 - and bookmarkChanges (same as promisesWatch, actually--just an alias! 😜 😉 xx 😜)
 
+And, finally, the types that currently need documenting are:
+
+- BookmarkNode
+- SerializedPathArray
+- PathArray
+
 But, not to worry--they (the fs-ones anyway) are [pretty much like the NodeJS fs versions](https://nodejs.org/docs/latest/api/fs.html) so you can head over [there](https://nodejs.org/docs/latest/api/fs.html) or [read the code](https://github.com/i5ik/Bookmate/blob/main/src/index.js) to know more&mdash;until somebody
 gets around to finishing these docs.
 
