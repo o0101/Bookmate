@@ -62,7 +62,7 @@ const Bookmate = {
   mount,
   unmount
 };
-export default Bookmate;
+//export default Bookmate;
 // get an async stream of changes to any bookmark files of Chrome stable
 // for the current account
 export async function* bookmarkChanges(opts = {}) {

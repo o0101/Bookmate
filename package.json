@@ -7,7 +7,7 @@
   "main": "dist/bookmate.js",
   "scripts": {
     "lint": "watch -n 5 npx eslint .",
-    "build": "npx webpack "
+    "build": "npx rollup --config"
   },
   "repository": {
     "type": "git",
@@ -33,7 +33,10 @@
   },
   "homepage": "https://github.com/i5ik/bookmate#readme",
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^21.0.1",
     "eslint": "^8.6.0",
-    "nodemon": "^2.0.15"
+    "nodemon": "^2.0.15",
+    "rollup": "^2.62.0",
+    "rollup-plugin-terser": "^7.0.2"
   }
 }
