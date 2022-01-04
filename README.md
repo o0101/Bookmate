@@ -20,6 +20,8 @@ async function startObservingBookmarkChanges() {
 }
 ```
 
+----------------------------------------
+
 ## Features
 
 Bookmate:
@@ -90,6 +92,28 @@ Reads the contents of the folder.
 
 If `options.withFileTypes` is set to true, the result will contain [`<BookmarkNode>`](#type-bookmarknode) objects.
 
+## &hellip; 🚧
+
+Well this is a little embarrassing 😅 &mdash; I'm sorry, other documentation should go here. 👷‍♀️
+
+The outstanding fs-like functions to document currently are:
+
+- existsSync
+- writeFileSync
+- mkdirSync
+- promisesWatch (*aka bookmarkChanges)
+
+And other additional functions to document currently are:
+
+- mount
+- unmount
+- getProfileRootDir
+- saveWithChecksum
+- and bookmarkChanges (same as promisesWatch, actually--just an alias! 😜 😉 xx 😜)
+
+But, not to worry--they (the fs-ones anyway) are [pretty much like the NodeJS fs versions](https://nodejs.org/docs/latest/api/fs.html) so you can head over [there](https://nodejs.org/docs/latest/api/fs.html) or [read the code](https://github.com/i5ik/Bookmate/blob/main/src/index.js) to know more&mdash;until somebody
+gets around to finishing these docs.
+
 ## Implementation Progress & Roadmap 💹
 
 - [x] emit change events for URL bookmark additions, deletions and name changes
@@ -125,3 +149,7 @@ Welcome! It's all kind of new so many you can help also set up a contributing gu
 ## License ⚖️
 
 AGPL-3.0 &copy; [Cris](https://github.com/i5ik)
+
+-----------------------
+
+# *[📗 Bookmate](https://github.com/i5ik/Bookmate)!!!!!*
