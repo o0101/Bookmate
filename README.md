@@ -1,6 +1,6 @@
 # [📗 Bookmate](https://github.com/i5ik/Bookmate) [![npm](https://img.shields.io/npm/dt/bookmate)](https://www.npmjs.com/package/bookmate) [![npm](https://img.shields.io/npm/v/bookmate?color=%2300ff44)](https://www.npmjs.com/package/bookmate) [![visitors+++](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fi5ik%2Fbookmate&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visits%20%28today%2Ftotal%29%20since%20Jan%204%202022&edge_flat=false)](https://hits.seeyoufarm.com)
 
-**An append-only key-value store built on Chrome bookmarks, plus an asychronous stream of Bookmark changes**
+**An append-only key-value store built on Chrome bookmarks, plus an asychronous stream of Bookmark changes. For NodeJS**
 
 ## Features
 
@@ -10,21 +10,27 @@ Bookmate:
 - automatically locates the right [Chrome Profile directory](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md) in a platform-agnostic way by observing bookmark changes
 - is possesed of an [fs](https://nodejs.org/docs/latest/api/fs.html#file-system)-like, and simple, NodeJS API: [readFileSync, writeFileSync, promisesWatch etc](#api)
 
-## Introduction 🧙‍♂️
+## Very Long Introduction 🧙‍♂️
 
-Have you ever wanted to build something that uses Chrome bookmarks but not release it as a Chrome extension? Have you ever wanted to programmatically alter the bookmarks in Chrome, or monitor these for additions, updates and deletions--again, without using extension APIs? There's a lot of libraries out there to parse Chrome bookmarks, but none that actually make it simple to modify them or monitor them for changes. Maybe you want to trigger a certain job like [archiving a web page](https://github.com/i5ik/DiskerNet) every time a bookmark is added--or something else? Just imagine! The 🌏 is your 🦪! 💎✨
+Have you ever wanted to build something that uses Chrome bookmarks but not release it as a Chrome extension? Have you ever wanted to programmatically alter the bookmarks in Chrome, or monitor these for additions, updates and deletions--again, without using extension APIs? 
+
+There's a lot of libraries out there to parse Chrome bookmarks, but none that actually make it simple to modify them or monitor them for changes. Maybe you want to trigger a certain job like [archiving a web page](https://github.com/i5ik/DiskerNet) every time a bookmark is added--or something else? Just imagine! The 🌏 is your 🦪! 💎✨
 
 Imagine you could do this, what would you build? Because what you couldn't do before, you now can. Actually...you probably could have done it, because it's *not that hard*.
 
 Bookmate makes it possible to monitor and modify Chrome bookmarks, and have those changes propagated to sync--which means that the bookmarks and folders you insert on one device, will show up in Chrome on other devices where Chrome is logged into that same account. 
 
-But cool your heels there a little bit, because there are a few major caveats that come with offering this functionality on the back of a flagship product of one of the internet-tycoon companies, one with major engineering chops and resources. You see Chrome has built a massive global infrastructure to sync data for their hundreds of millions of users, and something of this scale has to be reliable, and resilient against corruption. It's that robustness that prevents certain features from working with our current approach. This means that the following things are currently impossible with Bookmate, because we don't know a simple way to add the relevant sync-related metadata to ensure the following operations propagate:
+But cool your heels there a little bit, because there are a few major caveats that come with offering this functionality on the back of a flagship product of one of the internet-tycoon companies, one with major engineering chops and resources. Chrome has built a massive global infrastructure to sync data for their hundreds of millions of users, and something of this scale has to be reliable, and resilient against corruption. That prevents certain features from working with our current approach. 
+
+This means that the following things are currently impossible with Bookmate, because we don't know a simple way to add the relevant sync-related metadata to ensure the following operations propagate:
 
 - delete a bookmark. 
 - move a bookmark. 
 - rename a bookmark.
 
-That sounds like everything you'd want to do!--right? Maybe so, maybe so. And if so, well I'm sorry, but you're flat of luck with Bookmate. But if you're use-case is different to that, if maybe it includes adding bookmarks, or reading bookmarks, or monitoring bookmarks for changes. there's still plenty you can do. Have you ever wanted to, for instance:
+That sounds like everything you'd want to do!--right? Maybe so, maybe so. And if so, well I'm sorry, but you're flat of luck with Bookmate. 
+
+But if you're use-case is different to that, if maybe it includes adding bookmarks, or reading bookmarks, or monitoring bookmarks for changes, well there's still plenty you can do. Have you ever wanted to, for instance:
 
 - read a bookmark?
 - read a bookmark folder?
@@ -32,7 +38,13 @@ That sounds like everything you'd want to do!--right? Maybe so, maybe so. And if
 - see if a bookmark exists?
 - watch to see if any bookmarks are added, deleted or updated?
 
-Well you can do all those things. So, no stress friend--unfurrough that brow, it's gonna be OK 😄
+Well now you can do all those things! So, no stress friend--unfurrough that brow, it's gonna be OK 😄
+
+## Get
+
+```shell
+$ npm i --save bookmate@latest
+```
 
 ## API 
 
