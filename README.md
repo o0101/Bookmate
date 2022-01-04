@@ -164,4 +164,4 @@ AGPL-3.0 &copy; [Cris](https://github.com/i5ik)
 
 -----------------------
 
-# *[📗 Bookmate](https://github.com/i5ik/Bookmate)!!!!!*
+# *[📗 Bookmate](https://github.com/i5ik/Bookmate)*
