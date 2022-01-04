@@ -2,6 +2,24 @@
 
 **An append-only key-value store built on Chrome bookmarks, plus an asychronous stream of Bookmark changes. For NodeJS**
 
+*Actual [production example](https://github.com/i5ik/DiskerNet/blob/1d4675d3d17126246ca8989da6470ba3ffb799af/src/archivist.js#L699):*
+
+```js
+import {bookmarkChanges} from 'bookmate';
+
+// ...
+
+async function startObservingBookmarkChanges() {
+  for await ( const change of bookmarkChanges() ) {
+    switch(change.type) {
+      case 'new':     archiveAndIndexURL(change.url);         break;
+      case 'delete':  deleteFromIndexAndSearch(change.url);   break;
+      default: break;
+    }
+  }
+}
+```
+
 ## Features
 
 Bookmate:
