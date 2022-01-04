@@ -22,7 +22,7 @@ Bookmate makes it possible to monitor and modify Chrome bookmarks, and have thos
 
 But cool your heels there a little bit, because there are a few major caveats that come with offering this functionality on the back of a flagship product of one of the internet-tycoon companies, one with major engineering chops and resources. Chrome has built a massive global infrastructure to sync data for their hundreds of millions of users, and something of this scale has to be reliable, and resilient against corruption. That prevents certain features from working with our current approach. 
 
-This means that the following things are currently impossible with Bookmate, because we don't know a simple way to add the relevant sync-related metadata to ensure the following operations propagate:
+So the following things are currently impossible with Bookmate, because we don't know a simple way to add the relevant sync-related metadata to ensure the following operations propagate:
 
 - delete a bookmark. 
 - move a bookmark. 
