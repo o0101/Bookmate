@@ -14,13 +14,19 @@
     "url": "git+https://github.com/i5ik/bookmate.git"
   },
   "keywords": [
-    "bookmatearks",
+    "nodejs",
+    "chrome",
+    "observer",
+    "key-value",
+    "browser-bookmarks",
+    "filesystem-api",
+    "chrome-bookmarks",
+    "async-generator",
+    "append-only",
     "bookmarks",
     "bookm",
-    "chrome",
     "API",
     "library",
-    "observer",
     "change-notifications",
     "async-generator",
     "async-await",
@@ -33,10 +39,10 @@
   },
   "homepage": "https://github.com/i5ik/bookmate#readme",
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^21.0.1",
-    "eslint": "^8.6.0",
-    "nodemon": "^2.0.15",
-    "rollup": "^2.62.0",
-    "rollup-plugin-terser": "^7.0.2"
+    "eslint": "latest",
+    "@rollup/plugin-commonjs": "latest",
+    "nodemon": "latest",
+    "rollup": "latest",
+    "rollup-plugin-terser": "latest"
   }
 }
