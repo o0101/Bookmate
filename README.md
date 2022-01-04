@@ -4,8 +4,8 @@
 
 ## Features
 
-- a simple [fs-like](https://nodejs.org/docs/latest/api/fs.html#file-system) [API: readFileSync, writeFileSync, promisesWatch etc](#api)
-- automatically locate the right Chrome Profile directory by observing bookmark changes
+- [fs](https://nodejs.org/docs/latest/api/fs.html#file-system)-like, and simple NodeJS API: [readFileSync, writeFileSync, promisesWatch etc](#api)
+- automatically locate the right [Chrome Profile directory](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md) by observing bookmark changes
 - efficiently observe and emit Bookmark change events as a readable stream 
 
 ## API
