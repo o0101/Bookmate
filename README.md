@@ -4,9 +4,11 @@
 
 ## Features
 
-- [fs](https://nodejs.org/docs/latest/api/fs.html#file-system)-like, and simple NodeJS API: [readFileSync, writeFileSync, promisesWatch etc](#api)
-- automatically locate the right [Chrome Profile directory](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md) by observing bookmark changes
-- efficiently observe changes to bookmarks and emit these as an asychronous iterator readable stream 
+Bookmate:
+
+- efficiently observes changes to bookmarks and emits these as an asychronous iterator readable stream
+- automatically locates the right [Chrome Profile directory](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md) in a platform-agnostic way by observing bookmark changes
+- is possesed of an [fs](https://nodejs.org/docs/latest/api/fs.html#file-system)-like, and simple, NodeJS API: [readFileSync, writeFileSync, promisesWatch etc](#api)
 
 ## API
 
