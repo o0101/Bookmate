@@ -24,19 +24,19 @@ But cool your heels there a little bit, because there are a few major caveats th
 
 So the following things are currently impossible with Bookmate, because we don't know a simple way to add the relevant sync-related metadata to ensure the following operations propagate:
 
-- delete a bookmark. 
-- move a bookmark. 
-- rename a bookmark.
+- delete a bookmark. ✖️
+- move a bookmark. ✖️
+- rename a bookmark. ✖️
 
 That sounds like everything you'd want to do!--right? Maybe so, maybe so. And if so, well I'm sorry, but you're flat of luck with Bookmate. 
 
 But if you're use-case is different to that, if maybe it includes adding bookmarks, or reading bookmarks, or monitoring bookmarks for changes, well there's still plenty you can do. Have you ever wanted to, for instance:
 
-- read a bookmark?
-- read a bookmark folder?
-- add a new bookmark? 
-- see if a bookmark exists?
-- watch to see if any bookmarks are added, deleted or updated?
+- read a bookmark? ✔️
+- read a bookmark folder? ✔️
+- add a new bookmark? ✔️
+- see if a bookmark exists? ✔️
+- watch to see if any bookmarks are added, deleted or updated? ✔️
 
 Well now you can do all those things! So, no stress friend--unfurrough that brow, it's gonna be OK 😄
 
@@ -83,7 +83,7 @@ If `options.withFileTypes` is set to true, the result will contain [`<BookmarkNo
 - [x] promisesWatch (*aka bookmarkChanges)
 - [ ] emit events for Folder additions, deletions and name changes
 
-## Decisions & Undecided + Research Log 💭 🔎
+## Decisions & Undecided 💭 🔎 *(+ Research Log)*
 
 - [x] use an async generator to create a stream consunable via [`for await ... of`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for-await...of)
 - [x] utilize an fs-like API for familiarity and structure
