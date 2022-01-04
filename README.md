@@ -10,7 +10,31 @@ Bookmate:
 - automatically locates the right [Chrome Profile directory](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md) in a platform-agnostic way by observing bookmark changes
 - is possesed of an [fs](https://nodejs.org/docs/latest/api/fs.html#file-system)-like, and simple, NodeJS API: [readFileSync, writeFileSync, promisesWatch etc](#api)
 
-## API
+## Introduction 🧙‍♂️
+
+Have you ever wanted to build something that uses Chrome bookmarks but not release it as a Chrome extension? Have you ever wanted to programmatically alter the bookmarks in Chrome, or monitor these for additions, updates and deletions--again, without using extension APIs? There's a lot of libraries out there to parse Chrome bookmarks, but none that actually make it simple to modify them or monitor them for changes. Maybe you want to trigger a certain job like [archiving a web page](https://github.com/i5ik/DiskerNet) every time a bookmark is added--or something else? Just imagine! The 🌏 is your 🦪! 💎✨
+
+Imagine you could do this, what would you build? Because what you couldn't do before, you now can. Actually...you probably could have done it, because it's *not that hard*.
+
+Bookmate makes it possible to monitor and modify Chrome bookmarks, and have those changes propagated to sync--which means that the bookmarks and folders you insert on one device, will show up in Chrome on other devices where Chrome is logged into that same account. 
+
+But cool your heels there a little bit, because there are a few major caveats that come with offering this functionality on the back of a flagship product of one of the internet-tycoon companies, one with major engineering chops and resources. You see Chrome has built a massive global infrastructure to sync data for their hundreds of millions of users, and something of this scale has to be reliable, and resilient against corruption. It's that robustness that prevents certain features from working with our current approach. This means that the following things are currently impossible with Bookmate, because we don't know a simple way to add the relevant sync-related metadata to ensure the following operations propagate:
+
+- delete a bookmark. 
+- move a bookmark. 
+- rename a bookmark.
+
+That sounds like everything you'd want to do!--right? Maybe so, maybe so. And if so, well I'm sorry, but you're flat of luck with Bookmate. But if you're use-case is different to that, if maybe it includes adding bookmarks, or reading bookmarks, or monitoring bookmarks for changes. there's still plenty you can do. Have you ever wanted to, for instance:
+
+- read a bookmark?
+- read a bookmark folder?
+- add a new bookmark? 
+- see if a bookmark exists?
+- watch to see if any bookmarks are added, deleted or updated?
+
+Well you can do all those things. So, no stress friend--unfurrough that brow, it's gonna be OK 😄
+
+## API 
 
 ## `readFileSync(path[, options])`
 
@@ -36,7 +60,7 @@ Reads the contents of the folder.
 
 If `options.withFileTypes` is set to true, the result will contain [`<BookmarkNode>`](#type-bookmarknode) objects.
 
-## Implementation Progress & Roadmap
+## Implementation Progress & Roadmap 💹
 
 - [x] emit change events for URL bookmark additions, deletions and name changes
 - [x] existsSync
@@ -47,7 +71,7 @@ If `options.withFileTypes` is set to true, the result will contain [`<BookmarkNo
 - [x] promisesWatch (*aka bookmarkChanges)
 - [ ] emit events for Folder additions, deletions and name changes
 
-## Decisions & Undecided
+## Decisions & Undecided 💭 🔎
 
 - [x] use an async generator to create a stream consunable via [`for await ... of`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for-await...of)
 - [x] utilize an fs-like API for familiarity and structure
@@ -64,10 +88,10 @@ If `options.withFileTypes` is set to true, the result will contain [`<BookmarkNo
 - [x] abandon current attempts to implement deletion, renaming and moving that is not reverted by Chrome's [Unified Sync and Storage](https://www.chromium.org/developers/design-documents/sync/unified-sync-and-storage-overview) and [Sync Model API](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/sync/model_api.md)
 - [ ] try again in future to examine source code, monitor local filesystem in Chrome Profile directory, and otherwise attempt to innovate a way to perform local changes to the Bookmarks store (besides adds, which we can do, and which *are* propagated), *and* emit somehow the correct sync metadata to ensure: 1) those changes are propagated, and; 2) those changes are not reverted by sync merging in remote 'corrections'. 
 
-## Contributions
+## Contributions ❤️
 
 Welcome! It's all kind of new so many you can help also set up a contributing guidelines, documentation and so on 😹
 
-## License
+## License ⚖️
 
 AGPL-3.0 &copy; [Cris](https://github.com/i5ik)
