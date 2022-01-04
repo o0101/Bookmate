@@ -1,4 +1,4 @@
-# bookmate
+# bookmate [![npm](https://img.shields.io/npm/dt/bookmate)](https://www.npmjs.com/package/bookmate) [![npm](https://img.shields.io/npm/v/bookmate?color=%2300ff44)](https://www.npmjs.com/package/bookmate) 
 
 Complete API for Chrome bookmatearks: create, read, update, delete and change notifications.  In NodeJS
 
