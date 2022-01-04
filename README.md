@@ -83,7 +83,7 @@ If `options.withFileTypes` is set to true, the result will contain [`<BookmarkNo
 - [x] promisesWatch (*aka bookmarkChanges)
 - [ ] emit events for Folder additions, deletions and name changes
 
-## Decisions & Undecided 💭 🔎
+## Decisions & Undecided + Research Log 💭 🔎
 
 - [x] use an async generator to create a stream consunable via [`for await ... of`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for-await...of)
 - [x] utilize an fs-like API for familiarity and structure
