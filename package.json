@@ -1,6 +1,6 @@
 {
   "name": "bookmate",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "type": "module",
   "description": "WIP - Complete API for Chrome bookmatearks: create, read, update, delete and change notifications.",
   "module": "src/index.js",
