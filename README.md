@@ -1,8 +1,8 @@
-# [📗 Bookmate](https://github.com/i5ik/Bookmate) [![npm](https://img.shields.io/npm/dt/bookmate)](https://www.npmjs.com/package/bookmate) [![npm](https://img.shields.io/npm/v/bookmate?color=%2300ff44)](https://www.npmjs.com/package/bookmate) [![visitors+++](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fi5ik%2Fbookmate&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visits%20%28today%2Ftotal%29%20since%20Jan%204%202022&edge_flat=false)](https://hits.seeyoufarm.com)
+# [📗 Bookmate](https://github.com/crisdosyago/Bookmate) [![npm](https://img.shields.io/npm/dt/bookmate)](https://www.npmjs.com/package/bookmate) [![npm](https://img.shields.io/npm/v/bookmate?color=%2300ff44)](https://www.npmjs.com/package/bookmate) [![visitors+++](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fcrisdosyago%2Fbookmate&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=visits%20%28today%2Ftotal%29%20since%20Jan%204%202022&edge_flat=false)](https://hits.seeyoufarm.com)
 
 **An append-only key-value store built on Chrome bookmarks, plus an asychronous stream of Bookmark changes. For NodeJS**
 
-*Actual [production example](https://github.com/i5ik/DiskerNet/blob/1d4675d3d17126246ca8989da6470ba3ffb799af/src/archivist.js#L699):*
+*Actual [production example](https://github.com/crisdosyago/DiskerNet/blob/1d4675d3d17126246ca8989da6470ba3ffb799af/src/archivist.js#L699):*
 
 ```js
 import {bookmarkChanges} from 'bookmate';
@@ -34,7 +34,7 @@ Bookmate:
 
 Have you ever wanted to build something that uses Chrome bookmarks but not release it as a Chrome extension? Have you ever wanted to programmatically alter the bookmarks in Chrome, or monitor these for additions, updates and deletions--again, without using extension APIs? 
 
-There's a lot of libraries out there to parse Chrome bookmarks, but none that actually make it simple to modify them or monitor them for changes. Maybe you want to trigger a certain job like [archiving a web page](https://github.com/i5ik/DiskerNet) every time a bookmark is added--or something else? Just imagine! The 🌏 is your 🦪! 💎✨
+There's a lot of libraries out there to parse Chrome bookmarks, but none that actually make it simple to modify them or monitor them for changes. Maybe you want to trigger a certain job like [archiving a web page](https://github.com/crisdosyago/DiskerNet) every time a bookmark is added--or something else? Just imagine! The 🌏 is your 🦪! 💎✨
 
 Imagine you could do this, what would you build? Because what you couldn't do before, you now can. Actually...you probably could have done it, because it's *not that hard*.
 
@@ -119,7 +119,7 @@ And, finally, the types that currently need documenting are:
 - SerializedPathArray
 - PathArray
 
-But, not to worry--they (the fs-ones anyway) are [pretty much like the NodeJS fs versions](https://nodejs.org/docs/latest/api/fs.html) so you can head over [there](https://nodejs.org/docs/latest/api/fs.html) or [read the code](https://github.com/i5ik/Bookmate/blob/main/src/index.js) to know more&mdash;until somebody
+But, not to worry--they (the fs-ones anyway) are [pretty much like the NodeJS fs versions](https://nodejs.org/docs/latest/api/fs.html) so you can head over [there](https://nodejs.org/docs/latest/api/fs.html) or [read the code](https://github.com/crisdosyago/Bookmate/blob/main/src/index.js) to know more&mdash;until somebody
 gets around to finishing these docs.
 
 ## Implementation Progress & Roadmap 💹
@@ -146,7 +146,7 @@ gets around to finishing these docs.
   - [x] consider using a bridge made from a browser extension running on a Chrome instance started by the NodeJS process with [`--silent-launch`](https://peter.sh/experiments/chromium-command-line-switches/#silent-launch) and [extensions command-line flags](https://github.com/puppeteer/puppeteer/issues/659#issuecomment-341965254) that is instrumented with [Chrome Remote Debugging Protocol](https://chromedevtools.github.io/devtools-protocol/) to expose [relevant Chrome Extension APIs](https://developer.chrome.com/docs/extensions/reference/bookmarks/) to NodeJS via the CRDP WebSocket. 
     - [x] Likely possible, certainly so without silent launch (tho with we can probably just instrument an extension background page, even tho there's no visible window). Tho basically this seems like constructing a massive and elaborate [Rube Goldberg machine](https://en.wikipedia.org/wiki/Rube_Goldberg_machine) just to thrust a red rubber glove to push a tiny button that says "Delete Bookmark". 
   - [x] See if Global Sync respects a local "Move" operation so that we may implement Delete via a "Move to Trash" semantic.
-    - [x] Unfortuantely Moves are neither propagated by Sync, but nor are they reverted. It's not a loophole, because: 1) The "deletions" (actually moves to a [Trash folder](https://github.com/i5ik/Bookmate/blob/main/src/index.js#L13) we `mkdirSync()` are not propagated to other sync clients (other Chrome browsers on other devices where you are signed in); and 2) it's unclear how long these may actually persist for, if some other change triggers sync to identify these nodes have been moved, then the local changes may be reverted. So I think it's better to avoid providing this possibly unreliable API, than to do so, and end up breaking the implicit promise people took its existence to mean, which they didn't in any case dissuade themselves of by reading the docs or code details more closely. 
+    - [x] Unfortuantely Moves are neither propagated by Sync, but nor are they reverted. It's not a loophole, because: 1) The "deletions" (actually moves to a [Trash folder](https://github.com/crisdosyago/Bookmate/blob/main/src/index.js#L13) we `mkdirSync()` are not propagated to other sync clients (other Chrome browsers on other devices where you are signed in); and 2) it's unclear how long these may actually persist for, if some other change triggers sync to identify these nodes have been moved, then the local changes may be reverted. So I think it's better to avoid providing this possibly unreliable API, than to do so, and end up breaking the implicit promise people took its existence to mean, which they didn't in any case dissuade themselves of by reading the docs or code details more closely. 
 - [x] abandon current attempts to implement deletion, renaming and moving that is not reverted by Chrome's [Unified Sync and Storage](https://www.chromium.org/developers/design-documents/sync/unified-sync-and-storage-overview) and [Sync Model API](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/sync/model_api.md)
 - [ ] try again in future to examine source code, monitor local filesystem in Chrome Profile directory, and otherwise attempt to innovate a way to perform local changes to the Bookmarks store (besides adds, which we can do, and which *are* propagated), *and* emit somehow the correct sync metadata to ensure: 1) those changes are propagated, and; 2) those changes are not reverted by sync merging in remote 'corrections'. 
 
@@ -160,8 +160,8 @@ Welcome! It's all kind of new so many you can help also set up a contributing gu
 
 ## License ⚖️
 
-AGPL-3.0 &copy; [Cris](https://github.com/i5ik)
+AGPL-3.0 &copy; [Cris](https://github.com/crisdosyago)
 
 -----------------------
 
-# *[📗 Bookmate](https://github.com/i5ik/Bookmate)*
+# *[📗 Bookmate](https://github.com/crisdosyago/Bookmate)*

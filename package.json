@@ -7,11 +7,12 @@
   "main": "dist/bookmate.js",
   "scripts": {
     "lint": "watch -n 5 npx eslint .",
-    "build": "npx rollup --config"
+    "build": "npx rollup --config",
+    "demo": "node src/demo.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/i5ik/bookmate.git"
+    "url": "git+https://github.com/crisdosyago/bookmate.git"
   },
   "keywords": [
     "nodejs",
@@ -35,9 +36,9 @@
   "author": "@dosy",
   "license": "AGPL-3.0",
   "bugs": {
-    "url": "https://github.com/i5ik/bookmate/issues"
+    "url": "https://github.com/crisdosyago/bookmate/issues"
   },
-  "homepage": "https://github.com/i5ik/bookmate#readme",
+  "homepage": "https://github.com/crisdosyago/bookmate#readme",
   "devDependencies": {
     "eslint": "latest",
     "@rollup/plugin-commonjs": "latest",

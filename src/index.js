@@ -12,7 +12,7 @@
     showChecksums: false,
   };
 	const CHROME_EPOCH = new Date(1601,0,1).getTime();
-  const LIBRARY_REPO = `https://github.com/i5ik/bookmate`;
+  const LIBRARY_REPO = `https://github.com/crisdosyago/bookmate`;
   //const TRASH_PATH = ['other', 'Trash (delete by Bookmate)'];
   const EXPECTED_KEYS = [
       'checksum',
