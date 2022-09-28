@@ -15,7 +15,10 @@
 
   Bookmate.mount(path);
 
-  const entries = Bookmate.readdirSync('bookmark_bar', {withFileTypes:true});
+  const entries = Bookmate.readdirSync(
+    'bookmark_bar', 
+    {withFileTypes:true}
+  );
 
   console.log(entries);
 ```
