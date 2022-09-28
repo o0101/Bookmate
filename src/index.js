@@ -7,7 +7,10 @@
   import {SystemError} from './error.js';
 
 // constants
-  const DEBUG = process.env.DEBUG_BOOKMATE || false;
+  const DEBUG = {
+    val: process.env.DEBUG_BOOKMATE || 0,
+    showChecksums: false,
+  };
 	const CHROME_EPOCH = new Date(1601,0,1).getTime();
   const LIBRARY_REPO = `https://github.com/i5ik/bookmate`;
   //const TRASH_PATH = ['other', 'Trash (delete by Bookmate)'];
@@ -101,7 +104,7 @@ export async function* bookmarkChanges(opts = {}) {
 
       const options = Object.assign({}, FS_WATCH_OPTS, opts);
       const observer = fs.watch(dirPath, options);
-      DEBUG && console.info(options);
+      DEBUG.val && console.info(options);
       console.log(`Observing ${dirPath}`);
       // Note
         // allow the parent process to exit 
@@ -113,7 +116,7 @@ export async function* bookmarkChanges(opts = {}) {
           filename = filename || '';
           // listen to everything
           const path = Path.resolve(dirPath, filename);
-          DEBUG && console.log(event, path);
+          DEBUG.val && console.log(event, path);
           // but only act if it is a bookmark file
           if ( isBookmarkFile(filename) ) {
             // keep track of recent, active mounts and book an unbooked ones
@@ -126,7 +129,7 @@ export async function* bookmarkChanges(opts = {}) {
               }
               State.mostRecentMountPoint = path;
 
-            DEBUG && console.log(event, path, notifyChange);
+            DEBUG.val && console.log(event, path, notifyChange);
             // save the event type and file it happened to
             change = {event, path};
             // drop the most recently pushed promise from our bookkeeping list
@@ -331,13 +334,13 @@ export async function* bookmarkChanges(opts = {}) {
 
   // check if a path exists !
   export function existsSync(path) {
-    DEBUG && console.log('existsSync');
+    DEBUG.val && console.log('existsSync');
     return get(path) === undefined ? false : true; 
   }
 
   // get a bookmark contents !
   export function readFileSync(path, {encoding} = {}) {
-    DEBUG && console.log('readFileSync');
+    DEBUG.val && console.log('readFileSync');
     let content = getFile(path);
     if ( content ) {
       if ( encoding !== 'json' ) {
@@ -354,7 +357,7 @@ export async function* bookmarkChanges(opts = {}) {
 
   // get a folder contents !
   export function readdirSync(path, {withFileTypes, encoding} = {}) {
-    DEBUG && console.log('readdirSync');
+    DEBUG.val && console.log('readdirSync');
     let folder = getFolder(path);
     if ( folder ) {
       const enc = s => encoding === 'buffer' ? Buffer.from(s) : s;
@@ -380,7 +383,7 @@ export async function* bookmarkChanges(opts = {}) {
 
   // write a bookmark
   export function writeFileSync(path, data) {
-    DEBUG && console.log('writeFileSync');
+    DEBUG.val && console.log('writeFileSync');
     path = guardAndNormalizeFilePath(path);
     data = guardAndNormalizeFile(data);
     const last = path.pop();
@@ -669,8 +672,19 @@ export async function* bookmarkChanges(opts = {}) {
       return JSON.parse(path);
     } else if ( isArrayPath(path) ) {
       return path;
-    } else if ( typeof path === "string" && isURL(path) ) {
-      return [path]; 
+    } else if ( typeof path === "string" ) {
+      if ( isURL(path) ) {
+        return [path]; 
+      } else if ( ! /https?:/.test(path) ) {
+        return path.split('/').filter(seg => seg.length);
+      } else {
+        throw new SystemError('EINVAL', 
+          `Sorry path shorthand ('/' separator syntax)
+          can not be used with Bookmark URLs. 
+          Please use a path array instead.
+          `
+        );
+      }
     } else {
       throw new SystemError('EINVAL', 
         `Sorry path ${
@@ -776,7 +790,7 @@ export async function* bookmarkChanges(opts = {}) {
     let name = PLAT_TABLE[plat];
     let rootDir;
 
-    DEBUG && console.log({plat, name});
+    DEBUG.val && console.log({plat, name});
 
     if ( !name ) {
       if ( plat === 'win32' ) {
@@ -896,7 +910,7 @@ export async function* bookmarkChanges(opts = {}) {
     }
     const expectedChecksum = computeChecksum(obj);
     const {checksum} = obj;
-    console.log(expectedChecksum, checksum);
+    DEBUG.showChecksums && console.log(expectedChecksum, checksum);
     return obj;
   }
 
@@ -977,7 +991,7 @@ export async function* bookmarkChanges(opts = {}) {
 
     // delete a folder
     export function rmdirSync(path) {
-      DEBUG && console.log('rmdirSync');
+      DEBUG.val && console.log('rmdirSync');
       path = guardAndNormalizeFolderPath(path);
       const last = path.pop();
       if ( path.length ) {
@@ -1010,7 +1024,7 @@ export async function* bookmarkChanges(opts = {}) {
       // That's the reason we implement 
       // unlinkSync as a 'move to Trash'
     function remove(path) {
-      DEBUG && console.log('(internal) remove');
+      DEBUG.val && console.log('(internal) remove');
       // handle folder entry
       console.info(`Handle folder entries`);
       path = guardAndNormalizeFilePath(path);
