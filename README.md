@@ -111,7 +111,7 @@ You can supply a path in three ways. Here's the code that enumerates that (and I
 
 You can supply a path as a JSON.stringified string, like:
 
-```
+```js
 const musicFolderPath = [
   'bookmark_bar',
   'Music Research'
@@ -123,7 +123,7 @@ const stringifiedPathArray = JSON.stringify(musicFolderPath);
 
 To refer to the folder "Music Research" in your bookmarks bar. Or
 
-```
+```js
 const stringifiedPathArray = JSON.stringify([
   'bookmark_bar',
   'Music Research',
@@ -135,24 +135,24 @@ To refer to the bookmark with URL `https://sheetmusic.com` in the same folder.
 
 You can also supply it as simple an array.
 
-```
-fs.readdirSync(musicFolder);
+```js
+Bookmate.readdirSync(musicFolder);
 
-fs.readFileSync(musicFolder.push('https://spotify.com'), {encoding: 'json'});
+Bookmate.readFileSync(musicFolder.push('https://spotify.com'), {encoding: 'json'});
 ```
 
 I'm sure you get it now.
 
 Equivalent to the above are is:
 
-```
-fs.readdirSync('bookmark_bar/Music reserach');
+```js
+Bookmate.readdirSync('bookmark_bar/Music reserach');
 ```
 
 But the following throws an `EINVAL` error:
 
 ```
-fs.readFileSync('bookmark_bar/Music research/https://spotify.com');
+Bookmate.readFileSync('bookmark_bar/Music research/https://spotify.com');
 ```
 
 Because URLs can be used as part of this "path shorthand".
