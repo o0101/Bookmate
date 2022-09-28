@@ -55,182 +55,186 @@
 
 const Bookmate = {
   bookmarkChanges,
-  promisesWatch,
+  getProfileRootDir,
+  tryToFindBookmarksLocation,
+  mount,
+  unmount,
   mkdirSync,
   readFileSync,
   readdirSync,
   writeFileSync,
-  getProfileRootDir,
   saveWithChecksum,
-  mount,
-  unmount
+  promisesWatch,
 };
-//export default Bookmate;
+export default Bookmate;
+
 // get an async stream of changes to any bookmark files of Chrome stable
 // for the current account
-export async function* bookmarkChanges(opts = {}) {
-  // try to get the profile directory
-    const rootDir = getProfileRootDir();
 
-    if ( !fs.existsSync(rootDir) ) {
-      throw new TypeError(`Sorry! The directory where we thought the Chrome profile directories may be found (${rootDir}), does not exist. We can't monitor changes to your bookmarks, so Bookmark Select Mode is not supported.`);
-    }
+// watch for changes
+  export async function* bookmarkChanges(opts = {}) {
+    // try to get the profile directory
+      const rootDir = getProfileRootDir();
 
-  // state constants and variables (including chokidar file glob observer)
-    const observers = [];
-    const ps = [];
-    let change = false;
-    let notifyChange = false;
-    let stopLooping = false;
-    let shuttingDown = false;
-
-  // create sufficient observers
-    const dirs = fs.readdirSync(rootDir, {withFileTypes:true}).reduce((Dirs, dirent) => {
-      if ( dirent.isDirectory() && isProfileDir(dirent.name) ) {
-        const dirPath = Path.resolve(rootDir, dirent.name);
-
-        if ( fs.existsSync(dirPath) ) {
-          Dirs.push(dirPath); 
-        }
+      if ( !fs.existsSync(rootDir) ) {
+        throw new TypeError(`Sorry! The directory where we thought the Chrome profile directories may be found (${rootDir}), does not exist. We can't monitor changes to your bookmarks, so Bookmark Select Mode is not supported.`);
       }
-      return Dirs;
-    }, []);
-    for( const dirPath of dirs ) {
-      // first read it in
-        const filePath = Path.resolve(dirPath, 'Bookmarks');
-        if ( fs.existsSync(filePath) ) {
-          book(filePath);
+
+    // state constants and variables (including chokidar file glob observer)
+      const observers = [];
+      const ps = [];
+      let change = false;
+      let notifyChange = false;
+      let stopLooping = false;
+      let shuttingDown = false;
+
+    // create sufficient observers
+      const dirs = fs.readdirSync(rootDir, {withFileTypes:true}).reduce((Dirs, dirent) => {
+        if ( dirent.isDirectory() && isProfileDir(dirent.name) ) {
+          const dirPath = Path.resolve(rootDir, dirent.name);
+
+          if ( fs.existsSync(dirPath) ) {
+            Dirs.push(dirPath); 
+          }
         }
-
-      const options = Object.assign({}, FS_WATCH_OPTS, opts);
-      const observer = fs.watch(dirPath, options);
-      DEBUG.val && console.info(options);
-      console.log(`Observing ${dirPath}`);
-      // Note
-        // allow the parent process to exit 
-        //even if observer is still active somehow
-        options.unref && observer.unref();
-
-      // listen for all events from the observer
-        observer.on('change', (event, filename) => {
-          filename = filename || '';
-          // listen to everything
-          const path = Path.resolve(dirPath, filename);
-          DEBUG.val && console.log(event, path);
-          // but only act if it is a bookmark file
-          if ( isBookmarkFile(filename) ) {
-            // keep track of recent, active mounts and book an unbooked ones
-              if ( ! State.active.has(path) ) {
-                State.active.add(path);
-              }
-              // it could have just been created
-              if ( ! State.books[filePath] ) {
-                book(filePath);
-              }
-              State.mostRecentMountPoint = path;
-
-            DEBUG.val && console.log(event, path, notifyChange);
-            // save the event type and file it happened to
-            change = {event, path};
-            // drop the most recently pushed promise from our bookkeeping list
-            ps.pop();
-            // resolve the promise in the wait loop to process the bookmark file and emit the changes
-            notifyChange && notifyChange();
+        return Dirs;
+      }, []);
+      for( const dirPath of dirs ) {
+        // first read it in
+          const filePath = Path.resolve(dirPath, 'Bookmarks');
+          if ( fs.existsSync(filePath) ) {
+            book(filePath);
           }
-        });
-        observer.on('error', error => {
-          console.warn(`Bookmark file observer for ${dirPath} error`, error);
-          observers.slice(observers.indexOf(observer), 1);
-          if ( observers.length ) {
-            notifyChange && notifyChange();
-          } else {
-            stopLooping && stopLooping();
+
+        const options = Object.assign({}, FS_WATCH_OPTS, opts);
+        const observer = fs.watch(dirPath, options);
+        DEBUG.val && console.info(options);
+        console.log(`Observing ${dirPath}`);
+        // Note
+          // allow the parent process to exit 
+          //even if observer is still active somehow
+          options.unref && observer.unref();
+
+        // listen for all events from the observer
+          observer.on('change', (event, filename) => {
+            filename = filename || '';
+            // listen to everything
+            const path = Path.resolve(dirPath, filename);
+            DEBUG.val && console.log(event, path);
+            // but only act if it is a bookmark file
+            if ( isBookmarkFile(filename) ) {
+              // keep track of recent, active mounts and book an unbooked ones
+                if ( ! State.active.has(path) ) {
+                  State.active.add(path);
+                }
+                // it could have just been created
+                if ( ! State.books[filePath] ) {
+                  book(filePath);
+                }
+                State.mostRecentMountPoint = path;
+
+              DEBUG.val && console.log(event, path, notifyChange);
+              // save the event type and file it happened to
+              change = {event, path};
+              // drop the most recently pushed promise from our bookkeeping list
+              ps.pop();
+              // resolve the promise in the wait loop to process the bookmark file and emit the changes
+              notifyChange && notifyChange();
+            }
+          });
+          observer.on('error', error => {
+            console.warn(`Bookmark file observer for ${dirPath} error`, error);
+            observers.slice(observers.indexOf(observer), 1);
+            if ( observers.length ) {
+              notifyChange && notifyChange();
+            } else {
+              stopLooping && stopLooping();
+            }
+          });
+          observer.on('close', () => {
+            console.info(`Observer for ${dirPath} closed`);
+            observers.slice(observers.indexOf(observer), 1);
+            if ( observers.length ) {
+              notifyChange && notifyChange();
+            } else {
+              stopLooping && stopLooping();
+            }
+          });
+
+        observers.push(observer);
+      }
+
+    // make sure we kill the watcher on process restart or shutdown
+      process.on('SIGTERM', shutdown);
+      process.on('SIGHUP', shutdown);
+      process.on('SIGINT',  shutdown);
+      process.on('SIGBRK', shutdown);
+
+    // the main wait loop that enables us to turn a traditional NodeJS eventemitter
+    // into an asychronous stream generator
+    waiting: while(true) {
+      // Note: code resilience
+        //the below two statements can come in any order in this loop, both work
+
+      // get, process and publish changes
+        // only do if the change is there (first time it won't be because
+        // we haven't yielded out (async or yield) yet)
+        if ( change ) {
+          const {path} = change;
+          change = false;
+
+          try {
+            const changes = flatten(
+              JSON.parse(fs.readFileSync(path)), 
+              {toMap:true, map: State.books[path]}
+            );
+
+            for( const changeEvent of changes ) yield changeEvent;
+          } catch(e) {
+            console.warn(`Error publishing Bookmarks changes`, e);
           }
-        });
-        observer.on('close', () => {
-          console.info(`Observer for ${dirPath} closed`);
-          observers.slice(observers.indexOf(observer), 1);
-          if ( observers.length ) {
-            notifyChange && notifyChange();
-          } else {
-            stopLooping && stopLooping();
-          }
-        });
-
-      observers.push(observer);
-    }
-
-  // make sure we kill the watcher on process restart or shutdown
-    process.on('SIGTERM', shutdown);
-    process.on('SIGHUP', shutdown);
-    process.on('SIGINT',  shutdown);
-    process.on('SIGBRK', shutdown);
-
-  // the main wait loop that enables us to turn a traditional NodeJS eventemitter
-  // into an asychronous stream generator
-  waiting: while(true) {
-    // Note: code resilience
-      //the below two statements can come in any order in this loop, both work
-
-    // get, process and publish changes
-      // only do if the change is there (first time it won't be because
-      // we haven't yielded out (async or yield) yet)
-      if ( change ) {
-        const {path} = change;
-        change = false;
-
+        }
+      
+      // wait for the next change
+        // always wait tho (to allow queueing of the next event to process)
         try {
-          const changes = flatten(
-            JSON.parse(fs.readFileSync(path)), 
-            {toMap:true, map: State.books[path]}
-          );
-
-          for( const changeEvent of changes ) yield changeEvent;
-        } catch(e) {
-          console.warn(`Error publishing Bookmarks changes`, e);
+          await new Promise((res, rej) => {
+            // save these
+            notifyChange = res;   // so we can turn the next turn of the loop
+            stopLooping = rej;    // so we can break out of the loop (on shutdown)
+            ps.push({res,rej});   // so we can clean up any left over promises
+          });
+        } catch { 
+          ps.pop();
+          break waiting; 
         }
-      }
-    
-    // wait for the next change
-      // always wait tho (to allow queueing of the next event to process)
-      try {
-        await new Promise((res, rej) => {
-          // save these
-          notifyChange = res;   // so we can turn the next turn of the loop
-          stopLooping = rej;    // so we can break out of the loop (on shutdown)
-          ps.push({res,rej});   // so we can clean up any left over promises
-        });
-      } catch { 
-        ps.pop();
-        break waiting; 
-      }
-  }
-
-  shutdown();
-
-  return true;
-
-  async function shutdown() {
-    if ( shuttingDown ) return;
-    shuttingDown = true;
-    console.log('Bookmark observer shutting down...');
-    // clean up any outstanding waiting promises
-    while ( ps.length ) {
-      /* eslint-disable no-empty */
-      try { ps.pop().rej(); } finally {}
-      /* eslint-enable no-empty */
     }
-    // stop the waiting loop
-    stopLooping && setTimeout(() => stopLooping('bookmark watching stopped'), 0);
-    // clean up any observers
-    while(observers.length) {
-      /* eslint-disable no-empty */
-      try { observers.pop().close(); } finally {}
-      /* eslint-enable no-empty */
+
+    shutdown();
+
+    return true;
+
+    async function shutdown() {
+      if ( shuttingDown ) return;
+      shuttingDown = true;
+      console.log('Bookmark observer shutting down...');
+      // clean up any outstanding waiting promises
+      while ( ps.length ) {
+        /* eslint-disable no-empty */
+        try { ps.pop().rej(); } finally {}
+        /* eslint-enable no-empty */
+      }
+      // stop the waiting loop
+      stopLooping && setTimeout(() => stopLooping('bookmark watching stopped'), 0);
+      // clean up any observers
+      while(observers.length) {
+        /* eslint-disable no-empty */
+        try { observers.pop().close(); } finally {}
+        /* eslint-enable no-empty */
+      }
+      console.log('Bookmark observer shut down cleanly.');
     }
-    console.log('Bookmark observer shut down cleanly.');
   }
-}
 
 // mount functions
   // set a mount point (for fs-like API calls)
@@ -673,9 +677,7 @@ export async function* bookmarkChanges(opts = {}) {
     } else if ( isArrayPath(path) ) {
       return path;
     } else if ( typeof path === "string" ) {
-      if ( isURL(path) ) {
-        return [path]; 
-      } else if ( ! /https?:/.test(path) ) {
+      if ( ! /https?:/.test(path) ) {
         return path.split('/').filter(seg => seg.length);
       } else {
         throw new SystemError('EINVAL', 
@@ -763,7 +765,7 @@ export async function* bookmarkChanges(opts = {}) {
     return Array.isArray(x) && x.every(seg => typeof seg === "string");
   }
 
-  export function tryToFindBookmarkFile() {
+  export function tryToFindBookmarksLocation() {
     const rootDir = getProfileRootDir();
     const dirs = fs.readdirSync(rootDir, {withFileTypes:true}).reduce((Dirs, dirent) => {
       if ( dirent.isDirectory() && isProfileDir(dirent.name) ) {

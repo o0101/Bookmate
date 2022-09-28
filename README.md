@@ -2,22 +2,22 @@
 
 **An append-only key-value store built on Chrome bookmarks, plus an asychronous stream of Bookmark changes. For NodeJS**
 
-*Actual [production example](https://github.com/crisdosyago/DiskerNet/blob/1d4675d3d17126246ca8989da6470ba3ffb799af/src/archivist.js#L699):*
+*./src/demo.js:*
 
 ```js
-import {bookmarkChanges} from 'bookmate';
+  import Bookmate from './index.js';
 
-// ...
+  console.log(Bookmate);
 
-async function startObservingBookmarkChanges() {
-  for await ( const change of bookmarkChanges() ) {
-    switch(change.type) {
-      case 'new':     archiveAndIndexURL(change.url);         break;
-      case 'delete':  deleteFromIndexAndSearch(change.url);   break;
-      default: break;
-    }
-  }
-}
+  const path = Bookmate.tryToFindBookmarksLocation();
+
+  console.log({path});
+
+  Bookmate.mount(path);
+
+  const entries = Bookmate.readdirSync('bookmark_bar', {withFileTypes:true});
+
+  console.log(entries);
 ```
 
 ----------------------------------------
@@ -29,38 +29,6 @@ Bookmate:
 - efficiently observes changes to bookmarks and emits these as an asychronous iterator readable stream
 - automatically locates the right [Chrome Profile directory](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md) in a platform-agnostic way by observing bookmark changes
 - is possesed of an [fs](https://nodejs.org/docs/latest/api/fs.html#file-system)-like, and simple, NodeJS API: [readFileSync, writeFileSync, promisesWatch etc](#api)
-
-## Very Long Introduction 🧙‍♂️
-
-Have you ever wanted to build something that uses Chrome bookmarks but not release it as a Chrome extension? Have you ever wanted to programmatically alter the bookmarks in Chrome, or monitor these for additions, updates and deletions--again, without using extension APIs? 
-
-There's a lot of libraries out there to parse Chrome bookmarks, but none that actually make it simple to modify them or monitor them for changes. Maybe you want to trigger a certain job like [archiving a web page](https://github.com/crisdosyago/DiskerNet) every time a bookmark is added--or something else? Just imagine! The 🌏 is your 🦪! 💎✨
-
-Imagine you could do this, what would you build? Because what you couldn't do before, you now can. Actually...you probably could have done it, because it's *not that hard*.
-
-Bookmate makes it possible to monitor and modify Chrome bookmarks, and have those changes propagated to sync--which means that the bookmarks and folders you insert on one device, will show up in Chrome on other devices where Chrome is logged into that same account. 
-
-But cool your heels there a little bit, because there are a few major caveats that come with offering this functionality on the back of a flagship product of one of the internet-tycoon companies, one with major engineering chops and resources. Chrome has built a massive global infrastructure to sync data for their hundreds of millions of users, and something of this scale has to be reliable, and resilient against corruption. That prevents certain features from working with our current approach. 
-
-So the following things are currently impossible with Bookmate, because we don't know a simple way to add the relevant sync-related metadata to ensure the following operations propagate:
-
-- delete a bookmark. ✖️
-- move a bookmark. ✖️
-- rename a bookmark. ✖️
-
-That sounds like everything you'd want to do!--right? Maybe so, maybe so. And if so, well I'm sorry, but you're flat of luck with Bookmate. 
-
-But if you're use-case is different to that, if maybe it includes adding bookmarks, or reading bookmarks, or monitoring bookmarks for changes, well there's still plenty you can do. Have you ever wanted to, for instance:
-
-- read a bookmark? ✔️
-- read a bookmark folder? ✔️
-- add a new bookmark? ✔️
-- see if a bookmark exists? ✔️
-- watch to see if any bookmarks are added, deleted or updated? ✔️
-
-Well now you can do all those things! So, no stress friend--unfurrough that brow, it's gonna be OK 😄
-
-The weird 🔦 thing about this...is that you are able to use Chrome bookmarks as a globally-synced single-tenant append-only key value multi-store, with the keys being valid URLs, and the values being the bookmark name text. Very interesting! Not that I am suggesting you do this, firstly, whether you are *not discouraged* from doing this or not is an unknown, but presumably the Sync team (if there is such a thing) would be unhappy with people using their infra for such purposes. But it certainly enables some interesting bookmark-related use cases. And if it were *not discouraged* it would most definitely enable some interesting use cases with respect to saving various forms of app data specific to a person or Profile, for various Chrome-related apps that existed outside of the Chrome Extensions WebStore and other places. 
 
 ## Get
 
@@ -94,30 +62,123 @@ Reads the contents of the folder.
 
 If `options.withFileTypes` is set to true, the result will contain [`<BookmarkNode>`](#type-bookmarknode) objects.
 
+## Basic usage
+
+*See the demo above*
+
+1. Find your Bookmark folder location 
+2. Mount it
+3. Read a top-level bookmark folder
+4. Do anything!
+
+A note about path syntax. 
+
+You can supply a path in three ways. Here's the code that enumerates that (and I'll explain it below):
+
+```js
+  function guardAndNormalizePath(path) {
+    if ( isSerializedPath(path) ) {
+      return JSON.parse(path);
+    } else if ( isArrayPath(path) ) {
+      return path;
+    } else if ( typeof path === "string" ) {
+      if ( isURL(path) ) {
+        return [path]; 
+      } else if ( ! /https?:/.test(path) ) {
+        return path.split('/').filter(seg => seg.length);
+      } else {
+        throw new SystemError('EINVAL', 
+          `Sorry path shorthand ('/' separator syntax)
+          can not be used with Bookmark URLs. 
+          Please use a path array instead.
+          `
+        );
+      }
+    } else {
+      throw new SystemError('EINVAL', 
+        `Sorry path ${
+          path
+        } was not in a valid format. Please see the documentation at ${
+          LIBRARY_REPO
+        }`
+      );
+    }
+  }
+```
+
+You can supply a path as a JSON.stringified string, like:
+
+```
+const musicFolderPath = [
+  'bookmark_bar',
+  'Music Research'
+];
+
+const stringifiedPathArray = JSON.stringify(musicFolderPath);
+
+```
+
+To refer to the folder "Music Research" in your bookmarks bar. Or
+
+```
+const stringifiedPathArray = JSON.stringify([
+  'bookmark_bar',
+  'Music Research',
+  'https://sheetmusic.com'
+]);
+```
+
+To refer to the bookmark with URL `https://sheetmusic.com` in the same folder.
+
+You can also supply it as simple an array.
+
+```
+fs.readdirSync(musicFolder);
+
+fs.readFileSync(musicFolder.push('https://spotify.com'), {encoding: 'json'});
+```
+
+I'm sure you get it now.
+
+Equivalent to the above are is:
+
+```
+fs.readdirSync('bookmark_bar/Music reserach');
+```
+
+But the following throws an `EINVAL` error:
+
+```
+fs.readFileSync('bookmark_bar/Music research/https://spotify.com');
+```
+
+Because URLs can be used as part of this "path shorthand".
+
 ## &hellip; 🚧
 
 Well this is a little embarrassing 😅 &mdash; I'm sorry, other documentation should go here. 👷‍♀️
 
 The outstanding fs-like functions to document currently are:
 
-- existsSync
-- writeFileSync
-- mkdirSync
-- promisesWatch (*aka bookmarkChanges)
+- existsSync : does a path exist
+- writeFileSync : create a bookmark
+- mkdirSync : create a bookmark folder
+- promisesWatch (*aka bookmarkChanges) : watch for changes to bookmarks (added, deleted, altered)
 
 And other additional functions to document currently are:
 
-- mount
-- unmount
-- getProfileRootDir
-- saveWithChecksum
+- mount : attach Bookmate to the bookmarks directory (fs-like API now works)
+- tryToFindBookmarksLocation : try to find the bookmarks directory
+- unmount : un-attach Bookmate 
+- getProfileRootDir : try to get the root profile directory for Chrome
+- saveWithChecksum : Chrome bookmarks require a checksum, this ensures that works
 - and bookmarkChanges (same as promisesWatch, actually--just an alias! 😜 😉 xx 😜)
 
 And, finally, the types that currently need documenting are:
 
-- BookmarkNode
-- SerializedPathArray
-- PathArray
+- BookmarkNode : an object containing bookmark data
+- SerializedPathArray : a JSON-ified array containing bookmark path segments
+- PathArray : the JSON.parsed version of the above
 
 But, not to worry--they (the fs-ones anyway) are [pretty much like the NodeJS fs versions](https://nodejs.org/docs/latest/api/fs.html) so you can head over [there](https://nodejs.org/docs/latest/api/fs.html) or [read the code](https://github.com/crisdosyago/Bookmate/blob/main/src/index.js) to know more&mdash;until somebody
 gets around to finishing these docs.
@@ -133,23 +194,6 @@ gets around to finishing these docs.
 - [x] promisesWatch (*aka bookmarkChanges)
 - [ ] emit events for Folder additions, deletions and name changes
 
-## Decisions & Undecided 💭 🔎 *(+ Research Log)*
-
-- [x] use an async generator to create a stream consunable via [`for await ... of`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for-await...of)
-- [x] utilize an fs-like API for familiarity and structure
-- [x] reasearch ways to overcome remote sync change merges overwriting local changes enacted through filesystem that do not have the expected sync-related metadata
-  - [x] observe profile directory filesystem changes on manual Bookmark deletion while Chrome is offline: will it save metadata?
-    - [x] appears to save in a sync store LevelDB but not certain
-  - [x] examine source code to determine exactly how deletion progresses
-    - [x] spent a couple hours looking at the code, and while I have a rough idea, nothing conclusive emerges and 
-    - [x] certainly no clear way to leverage filesystem changes to insert valid metadata for changes we may make through the file system
-  - [x] consider using a bridge made from a browser extension running on a Chrome instance started by the NodeJS process with [`--silent-launch`](https://peter.sh/experiments/chromium-command-line-switches/#silent-launch) and [extensions command-line flags](https://github.com/puppeteer/puppeteer/issues/659#issuecomment-341965254) that is instrumented with [Chrome Remote Debugging Protocol](https://chromedevtools.github.io/devtools-protocol/) to expose [relevant Chrome Extension APIs](https://developer.chrome.com/docs/extensions/reference/bookmarks/) to NodeJS via the CRDP WebSocket. 
-    - [x] Likely possible, certainly so without silent launch (tho with we can probably just instrument an extension background page, even tho there's no visible window). Tho basically this seems like constructing a massive and elaborate [Rube Goldberg machine](https://en.wikipedia.org/wiki/Rube_Goldberg_machine) just to thrust a red rubber glove to push a tiny button that says "Delete Bookmark". 
-  - [x] See if Global Sync respects a local "Move" operation so that we may implement Delete via a "Move to Trash" semantic.
-    - [x] Unfortuantely Moves are neither propagated by Sync, but nor are they reverted. It's not a loophole, because: 1) The "deletions" (actually moves to a [Trash folder](https://github.com/crisdosyago/Bookmate/blob/main/src/index.js#L13) we `mkdirSync()` are not propagated to other sync clients (other Chrome browsers on other devices where you are signed in); and 2) it's unclear how long these may actually persist for, if some other change triggers sync to identify these nodes have been moved, then the local changes may be reverted. So I think it's better to avoid providing this possibly unreliable API, than to do so, and end up breaking the implicit promise people took its existence to mean, which they didn't in any case dissuade themselves of by reading the docs or code details more closely. 
-- [x] abandon current attempts to implement deletion, renaming and moving that is not reverted by Chrome's [Unified Sync and Storage](https://www.chromium.org/developers/design-documents/sync/unified-sync-and-storage-overview) and [Sync Model API](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/sync/model_api.md)
-- [ ] try again in future to examine source code, monitor local filesystem in Chrome Profile directory, and otherwise attempt to innovate a way to perform local changes to the Bookmarks store (besides adds, which we can do, and which *are* propagated), *and* emit somehow the correct sync metadata to ensure: 1) those changes are propagated, and; 2) those changes are not reverted by sync merging in remote 'corrections'. 
-
 ## Disclaimer
 
 No connection or endorsement expressed or implied with Google, Alphabet, Chrome, Sync or the Chromium authors.
@@ -161,6 +205,26 @@ Welcome! It's all kind of new so many you can help also set up a contributing gu
 ## License ⚖️
 
 AGPL-3.0 &copy; [Cris](https://github.com/crisdosyago)
+
+## More examples
+
+*Actual [production example](https://github.com/crisdosyago/DiskerNet/blob/1d4675d3d17126246ca8989da6470ba3ffb799af/src/archivist.js#L699):*
+
+```js
+import {bookmarkChanges} from 'bookmate';
+
+// ...
+
+async function startObservingBookmarkChanges() {
+  for await ( const change of bookmarkChanges() ) {
+    switch(change.type) {
+      case 'new':     archiveAndIndexURL(change.url);         break;
+      case 'delete':  deleteFromIndexAndSearch(change.url);   break;
+      default: break;
+    }
+  }
+}
+```
 
 -----------------------
 
