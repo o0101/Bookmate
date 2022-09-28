@@ -749,6 +749,28 @@ export async function* bookmarkChanges(opts = {}) {
     return Array.isArray(x) && x.every(seg => typeof seg === "string");
   }
 
+  export function tryToFindBookmarkFile() {
+    const rootDir = getProfileRootDir();
+    const dirs = fs.readdirSync(rootDir, {withFileTypes:true}).reduce((Dirs, dirent) => {
+      if ( dirent.isDirectory() && isProfileDir(dirent.name) ) {
+        const dirPath = Path.resolve(rootDir, dirent.name);
+
+        if ( fs.existsSync(dirPath) ) {
+          Dirs.push(dirPath); 
+        }
+      }
+      return Dirs;
+    }, []);
+    for( const dirPath of dirs ) {
+      // first read it in
+        const filePath = Path.resolve(dirPath, 'Bookmarks');
+        if ( fs.existsSync(filePath) ) {
+          return filePath;
+        }
+    }
+    throw new TypeError(`Could not find Bookmarks directory under standard chrome profile directory`);
+  }
+
   export function getProfileRootDir() {
     const plat = os.platform();
     let name = PLAT_TABLE[plat];
