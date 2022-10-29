@@ -8,13 +8,6 @@ console.log({path});
 
 Bookmate.mount(path);
 
-/*
-Bookmate.writeFileSync(['bookmark_bar', 'https://www.dia.mil'], {
-  name: "DIA",
-  type: "url"
-});
-*/
-
 {
   const entries = Bookmate.readdirSync('bookmark_bar', {withFileTypes:true});
 
