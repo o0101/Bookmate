@@ -401,8 +401,13 @@ export default Bookmate;
         );
       }
       data.url = last; // it must be this way
-      data.id = '' + State.maxId[saved.mountPoint]++;
-      parent.children.push(data);
+      data.id = data.id || ('' + State.maxId[saved.mountPoint]++);
+      const existingChildIndex = parent.children.findIndex(child => child.id === data.id);
+      if ( existingChildIndex > -1 ) {
+        parent.children.splice(existingChildIndex, 1, data);
+      } else {
+        parent.children.push(data);
+      }
       sync(saved.mountPoint, saved.bookmarkObj);
     } else {
       throw new SystemError(
@@ -445,13 +450,15 @@ export default Bookmate;
     let data;
 
     if ( Buffer.isBuffer(entry) ) {
-      data = entry.toString();
+      entry = entry.toString();
     }
 
-    if ( isSerializedFile(entry) ) {
-      data = JSON.parse(entry);
-    } else if ( typeof entry === "object" && typeof entry.name === "string" ) {
-      data = JSON.parse(JSON.stringify(entry));
+    if ( typeof entry === "string" ) {
+      entry = JSON.parse(entry);
+    }
+
+    if ( isSerializedEntry(entry) ) {
+      data = entry;
     } else {
       throw new SystemError(
         `EINVAL`,
@@ -459,7 +466,7 @@ export default Bookmate;
       );
     }
 
-    let {id, name, url, type, date_added, date_modified, guid, children} = data;
+    let {id, name, url, type, date_added, date_last_used, date_modified, guid, children} = data;
 
     if ( ! strict && ! type ) {
       if ( url && ! children) {
@@ -485,7 +492,8 @@ export default Bookmate;
       id: id || '' + State.maxId[getMount()]++,
       guid: guid || nextUUID(),
       date_added: date_added || toChromeTime(Date.now()),
-      date_modified: date_modified || toChromeTime(Date.now())
+      date_modified: date_modified || toChromeTime(Date.now()),
+      date_last_used: date_last_used || '0'
     };
 
     if ( type === 'url' ) {
@@ -678,6 +686,7 @@ export default Bookmate;
       return path;
     } else if ( typeof path === "string" ) {
       if ( ! /https?:/.test(path) ) {
+        console.log({path});
         return path.split('/').filter(seg => seg.length);
       } else {
         throw new SystemError('EINVAL', 
@@ -737,7 +746,7 @@ export default Bookmate;
     }
   }
 
-  function isSerializedFile(data) {
+  function isSerializedEntry(data) {
     // perf: cache this array in a lastParsedPath global
     // which is set to false on failure
     try {
