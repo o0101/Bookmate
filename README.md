@@ -39,6 +39,52 @@ Bookmate:
 $ npm i --save bookmate@latest
 ```
 
+## Demo
+
+```js
+import Bookmate from './index.js';
+
+console.log(Bookmate);
+
+const path = Bookmate.tryToFindBookmarksLocation();
+
+console.log({path});
+
+Bookmate.mount(path);
+
+{
+  const entries = Bookmate.readdirSync('bookmark_bar', {withFileTypes:true});
+
+  console.log(entries);
+}
+
+let entry;
+try {
+  entry = Bookmate.readFileSync([
+    'bookmark_bar',
+    'https://www.dia.mil/'
+  ], {encoding: 'json'});
+
+  entry.name += " Hello ";
+} catch(e) {
+  entry = {
+    name: "DIA",
+    type: "url"
+  }
+}
+console.log({entry});
+
+Bookmate.writeFileSync(['bookmark_bar', 'https://www.dia.mil/'], entry);
+
+{
+  const entries = Bookmate.readdirSync('bookmark_bar', {withFileTypes:true});
+
+  console.log(entries);
+}
+```
+
+*Above creates (if not exists) a bookmark to [DIA](https://www.dia.mil/), and appends "Hello" to its bookmark name (the title) otherwise*
+
 ## API 
 
 ## `readFileSync(path[, options])`
